@@ -12,6 +12,7 @@ column_copies = {
     ],
 }
 
+
 @openupgrade.migrate()
 def migrate(cr, version):
     openupgrade.copy_columns(cr, column_copies)

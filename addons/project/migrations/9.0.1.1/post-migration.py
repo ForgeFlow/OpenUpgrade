@@ -4,9 +4,7 @@
 # © 2015 Serpent Consulting Services Pvt. Ltd. - Sudhir Arya
 # License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl.html).
 
-import logging
 from openupgradelib import openupgrade
-logger = logging.getLogger('OpenUpgrade')
 
 # copied from pre-migration
 column_copies = {
@@ -15,17 +13,13 @@ column_copies = {
     ],
 }
 
-def drop_null(cr):
-    openupgrade.logged_query(cr, """
-        ALTER TABLE account_analytic_line
-        ALTER COLUMN amount DROP NOT NULL
-        """)
 
 def create_task_id(cr):
     openupgrade.logged_query(cr, """
         ALTER TABLE account_analytic_line
         ADD task_id integer
         """)
+
 
 def assign_task_work(cr):
     openupgrade.logged_query(cr, """
@@ -37,6 +31,7 @@ def assign_task_work(cr):
         FROM project_task_work
         """)
 
+
 def map_priority(cr):
     openupgrade.map_values(
         cr,
@@ -44,6 +39,7 @@ def map_priority(cr):
         'priority',
         [('2', '1')],
         table='project_task', write='sql')
+
 
 def map_template_state(cr):
     openupgrade.map_values(
@@ -53,6 +49,7 @@ def map_template_state(cr):
         [('template', 'draft')],
         table='project_project', write='sql')
 
+
 def copy_user_id(cr):
     openupgrade.logged_query(cr, """
         UPDATE project_project p
@@ -61,9 +58,9 @@ def copy_user_id(cr):
         WHERE a.id = p.analytic_account_id
         """)
 
+
 @openupgrade.migrate()
 def migrate(cr, version):
-    #drop_null(cr)
     map_priority(cr)
     map_template_state(cr)
     create_task_id(cr)
@@ -71,4 +68,6 @@ def migrate(cr, version):
     copy_user_id(cr)
     for table_name in column_copies.keys():
         for (old, new, field_type) in column_copies[table_name]:
-            openupgrade.convert_field_to_html(cr, table_name, openupgrade.get_legacy_name(old), old)
+            openupgrade.convert_field_to_html(cr, table_name,
+                                              openupgrade.get_legacy_name(old),
+                                              old)

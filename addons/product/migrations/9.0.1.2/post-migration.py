@@ -3,9 +3,7 @@
 # Jordi Ballester Alomar
 # License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl.html).
 
-import logging
 from openupgradelib import openupgrade
-logger = logging.getLogger('OpenUpgrade')
 
 
 def map_base(cr):
@@ -22,7 +20,8 @@ def update_price_history(cr):
     openupgrade.logged_query(cr, """
         INSERT INTO product_price_history
         (company_id, product_id, datetime, cost, write_date, write_uid)
-        SELECT pph.company_id, pr.id, pph.datetime, pph.cost, pph.write_date, pph.write_uid
+        SELECT pph.company_id, pr.id, pph.datetime, pph.cost, pph.write_date,
+        pph.write_uid
         FROM product_price_history as pph
         INNER JOIN product_template as pt
         ON pt.id = pph.%(product_tmpl_id)s
@@ -137,6 +136,7 @@ def update_product_pricelist_item(cr):
         UPDATE product_pricelist_item
         SET compute_price = 'formula'""")
 
+
 def update_product_supplierinfo(cr):
     # Create extra supplierinfo records when there were records in
     # pricelist_partnerinfo.
@@ -207,6 +207,7 @@ def update_product_template(cr):
         WHERE q.id = product_template.id AND q.count > 0
         """)
 
+
 def update_product_product(cr):
     # Move field values from product.template to product.product
     openupgrade.logged_query(cr, """
@@ -218,9 +219,6 @@ def update_product_product(cr):
         """)
 
 
-
-
-
 @openupgrade.migrate()
 def migrate(cr, version):
     map_base(cr)
@@ -229,5 +227,3 @@ def migrate(cr, version):
     update_product_supplierinfo(cr)
     update_product_template(cr)
     update_product_product(cr)
-
-

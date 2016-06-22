@@ -6,15 +6,18 @@
 
 from openupgradelib import openupgrade
 
+
 def account_type(cr):
     openupgrade.logged_query(cr, """
     ALTER TABLE account_analytic_account RENAME COLUMN type TO account_type
     """)
 
+
 def set_account_type(cr):
     openupgrade.logged_query(cr, """
     UPDATE account_analytic_account SET account_type = 'normal'
     """)
+
 
 @openupgrade.migrate()
 def migrate(cr, version):

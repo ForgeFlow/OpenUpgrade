@@ -6,13 +6,15 @@
 
 from openupgradelib import openupgrade
 
+
 def set_partner_id(cr):
     openupgrade.logged_query(cr, """
-    UPDATE account_analytic_line a 
-    SET partner_id = s.partner_id 
-    FROM res_users s 
+    UPDATE account_analytic_line a
+    SET partner_id = s.partner_id
+    FROM res_users s
     WHERE a.user_id = s.id
     """)
+
 
 @openupgrade.migrate()
 def migrate(cr, version):

@@ -16,7 +16,8 @@ column_renames = {
     'sale_order_line_invoice_rel': [
         ('invoice_id', 'invoice_line_id'),
     ],
-    # These columns are moved to product_uos module so they are kept to be recovered later.
+    # These columns are moved to product_uos module
+    # so they are kept to be recovered later.
     'sale_order_line': [
         ('product_uos', None),
     ],
@@ -33,6 +34,7 @@ column_copies = {
         ('state', None, None),
     ],
 }
+
 
 @openupgrade.migrate()
 def migrate(cr, version):

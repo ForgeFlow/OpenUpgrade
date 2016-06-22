@@ -6,7 +6,7 @@
 
 from openupgradelib import openupgrade
 
+
 @openupgrade.migrate()
 def migrate(cr, version):
     pass
-

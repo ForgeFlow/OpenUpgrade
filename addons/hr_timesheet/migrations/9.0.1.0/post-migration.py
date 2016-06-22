@@ -5,18 +5,17 @@
 # License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl.html).
 
 from openupgradelib import openupgrade
-import logging
-from openerp import api, pooler, SUPERUSER_ID
-from datetime import datetime
 
 
 def set_timesheet(cr):
-    # Set is_timesheet account.analytic.line value from use_timesheets of account.analytic.account
+    # Set is_timesheet account.analytic.line value from use_timesheets
+    # of account.analytic.account
     cr.execute("""
-    UPDATE account_analytic_line l SET is_timesheet = a.use_timesheets FROM account_analytic_account a WHERE a.id = l.account_id
+    UPDATE account_analytic_line l SET is_timesheet = a.use_timesheets FROM
+    account_analytic_account a WHERE a.id = l.account_id
     """)
+
 
 @openupgrade.migrate()
 def migrate(cr, version):
     set_timesheet(cr)
-

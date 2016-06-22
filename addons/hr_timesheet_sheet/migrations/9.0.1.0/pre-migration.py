@@ -6,10 +6,11 @@
 
 from openupgradelib import openupgrade
 
+
 @openupgrade.migrate()
 def migrate(cr, version):
     cr.execute("""
-    DROP VIEW IF EXISTS hr_timesheet_sheet_sheet_account;
+        DROP VIEW IF EXISTS hr_timesheet_sheet_sheet_account;
     """)
     # Inherited Views that encountered errors while running the migration.
     cr.execute("""
@@ -17,4 +18,3 @@ def migrate(cr, version):
         SET active = FALSE
         WHERE name in ('account.analytic.account.invoice.form')
     """)
-

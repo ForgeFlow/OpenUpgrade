@@ -6,7 +6,8 @@
 
 from openupgradelib import openupgrade
 
-table_renames = [('crm_case_section', 'crm_team'),]
+table_renames = [('crm_case_section', 'crm_team')]
+
 
 @openupgrade.migrate()
 def migrate(cr, version):

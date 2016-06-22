@@ -17,7 +17,8 @@ column_copies = {
     ],
 }
 
-# These column is kept even though it is removed in v9, in order to allow recovery by a future OCA module.
+# These column is kept even though it is removed in v9, in order
+# to allow recovery by a future OCA module.
 column_renames = {
     'project_task': [
         ('reviewer_id', None),
@@ -49,6 +50,7 @@ def migrate(cr, version):
     openupgrade.rename_tables(cr, table_renames)
     openupgrade.rename_columns(cr, column_renames)
     if openupgrade.column_exists(cr, 'project_project', 'members'):
-        openupgrade.rename_columns(cr, {'project_project': [('members', None)]})
+        openupgrade.rename_columns(cr, {'project_project': [('members',
+                                                             None)]})
     # Removing transient tables to get rid of warnings
     openupgrade.drop_columns(cr, column_drops)
