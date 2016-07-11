@@ -21,7 +21,7 @@ def hr_expense(cr):
     # Sets hr_expense_line product values to hr_expense
     cr.execute("""
     UPDATE hr_expense h SET product_id = l.product_id, unit_amount =
-    l.unit_amount, quantity = l.unit_quantity,
+    l.unit_amount, quantity = l.unit_quantity, date = l.date_value,
     analytic_account_id = l.analytic_account FROM hr_expense_line l
     WHERE l.expense_id = h.id
     """)
@@ -46,12 +46,12 @@ def hr_expense(cr):
             cr.execute("""
             INSERT INTO hr_expense
             (company_id, currency_id, journal_id, employee_id, state,
-            date, account_move_id, name, bank_journal_id,
+            account_move_id, name, bank_journal_id,
             untaxed_amount, payment_mode, analytic_account_id,
             create_date, write_date, create_uid, write_uid,
-            product_uom_id, unit_amount, quantity, product_id)
+            product_uom_id, unit_amount, quantity, product_id, date)
             SELECT company_id, currency_id, journal_id, employee_id, state,
-            date, account_move_id, name, bank_journal_id, 0.00, 'own_account',
+            account_move_id, name, bank_journal_id, 0.00, 'own_account',
             (select analytic_account from hr_expense_line where id = %(a)s),
             (select create_date from hr_expense_line where id = %(a)s),
             (select write_date from hr_expense_line where id = %(a)s),
@@ -60,7 +60,8 @@ def hr_expense(cr):
             (select uom_id from hr_expense_line where id = %(a)s),
             (select unit_amount from hr_expense_line where id = %(a)s),
             (select unit_quantity from hr_expense_line where id = %(a)s),
-            (select product_id from hr_expense_line where id = %(a)s)
+            (select product_id from hr_expense_line where id = %(a)s),
+            (select date_value from hr_expense_line where id = %(a)s)
             FROM hr_expense where id = %(b)s
             """ % {'a': p, 'b': expense})
     cr.execute("""
