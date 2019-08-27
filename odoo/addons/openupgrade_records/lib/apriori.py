@@ -20,6 +20,13 @@ renamed_modules = {
     'hr_employee_seniority': 'hr_employee_service_contract',
     # OCA/stock-logistics-workflow
     'stock_pack_operation_auto_fill': 'stock_move_line_auto_fill',
+
+    # Project specific:
+    'dp_reports': 'biegler_reports_base',
+    'dp_reports_account': 'biegler_reports_account',
+    'dp_reports_purchase': 'biegler_reports_purchase',
+    'dp_reports_sale': 'biegler_reports_sale',
+    'dp_reports_stock': 'biegler_reports_stock',
 }
 
 merged_modules = {
