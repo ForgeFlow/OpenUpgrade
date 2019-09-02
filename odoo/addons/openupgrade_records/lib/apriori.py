@@ -27,6 +27,7 @@ renamed_modules = {
     'dp_reports_purchase': 'biegler_reports_purchase',
     'dp_reports_sale': 'biegler_reports_sale',
     'dp_reports_stock': 'biegler_reports_stock',
+    'dp_production_draft': 'biegler_production_draft',
 }
 
 merged_modules = {
