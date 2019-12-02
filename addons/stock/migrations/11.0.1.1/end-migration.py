@@ -24,7 +24,7 @@ def merge_quants(env):
         if len(quants) == 1:
             continue
         openupgrade_merge_records.merge_records(
-            env.with_context(skip_reference_refs_orm=True),
+            env(context=dict(env.context, skip_reference_refs_orm=True)),
             'stock.quant', quants[1:].ids, quants[0].id, QUANT_MERGE_OPS,
         )
 
