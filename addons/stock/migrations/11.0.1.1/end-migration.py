@@ -23,23 +23,10 @@ def merge_quants(env):
         quants = StockQuant.search(group['__domain'])
         if len(quants) == 1:
             continue
-        try:
-            with env.cr.savepoint():
-                openupgrade_merge_records.merge_records(
-                    env, 'stock.quant', quants[1:].ids, quants[0].id, QUANT_MERGE_OPS,
-                )
-        except ValidationError as error:
-            logger.error(
-                'Cannot merge quants %s for '
-                'product %s, package %s, lot %s, location %s, owner %s: %s',
-                quants.ids,
-                quants[0].product_id.default_code or quants[0].product_id.name,
-                quants[0].package_id.name or '-',
-                quants[0].lot_id.name or '-',
-                quants[0].location_id.complete_name,
-                quants[0].owner_id.name or '-',
-                error,
-            )
+        openupgrade_merge_records.merge_records(
+            env.with_context(skip_reference_refs_orm=True),
+            'stock.quant', quants[1:].ids, quants[0].id, QUANT_MERGE_OPS,
+        )
 
 
 @openupgrade.migrate(use_env=True)
