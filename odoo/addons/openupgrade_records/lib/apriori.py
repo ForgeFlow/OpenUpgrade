@@ -27,8 +27,17 @@ renamed_modules = {
     # OCA/server-brand
     'res_config_settings_enterprise_remove': 'remove_odoo_enterprise',
     # OCA/stock-logistics-workflow
-    'stock_batch_picking': 'stock_picking_batch_extended',
     'stock_pack_operation_auto_fill': 'stock_move_line_auto_fill',
+    # Hobbii/odoo-modules
+    'hobbii': 'hobbii_product',
+    'purchase_order_cancelation': 'purchase_order_cancellation',
+    'delivery_order_line_cancelation': 'delivery_order_line_cancellation',
+    'cg_overrides': 'hobbii_cg_stock',
+    'delete_old_labels': 'hobbii_delete_old_labels',
+    # OCA/account-reconcile
+    'account_exclude_from_bank_statement_reconciliation': 'account_skip_bank_reconciliation',
+    # OCA/web
+    'web_tree_image': 'web_tree_image_tooltip',
 }
 
 merged_modules = {
