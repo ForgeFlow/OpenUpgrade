@@ -11,6 +11,8 @@ renamed_modules = {
     'account_payment_return_import_sepa_pain': (
         'account_payment_return_import_iso20022'
     ),
+    # OCA/account-reconcile
+    'account_exclude_from_bank_statement_reconciliation': 'account_skip_bank_reconciliation',
     # OCA/community-data-files
     'product_uom_unece': 'uom_unece',
     # OCA/crm > OCA/partner-contact
@@ -29,10 +31,11 @@ renamed_modules = {
     # OCA/server-tools
     'attachment_base_synchronize': 'attachment_queue',
     # OCA/stock-logistics-workflow
-    'stock_batch_picking': 'stock_picking_batch_extended',
+    # 'stock_batch_picking': 'stock_picking_batch_extended',
     'stock_pack_operation_auto_fill': 'stock_move_line_auto_fill',
     # OCA/web
     'web_advanced_filters': 'web_advanced_filter',
+    'web_tree_image': 'web_tree_image_tooltip',
     # OCA/l10n-brazil
     'l10n_br_account_payment': 'l10n_br_account_payment_order',
     'l10n_br_account_product': 'l10n_br_fiscal',
