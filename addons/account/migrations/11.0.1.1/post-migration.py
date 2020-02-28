@@ -91,7 +91,7 @@ def fill_account_invoice_line_total(env):
     rest_lines = line_obj.search([]) - empty_lines - simple_lines
     openupgrade.logger.debug("Compute the rest of the account.invoice.line"
                              "totals: %s" % len(rest_lines))
-    for line in rest_lines:
+    for line in openupgrade.chunked(rest_lines):
         # avoid error on taxes with other type of computation ('code' for
         # example, provided by module `account_tax_python`). We will need to
         # add the computation on the corresponding module post-migration.
@@ -105,7 +105,12 @@ def fill_account_invoice_line_total(env):
             price, currency, line.quantity, product=line.product_id,
             partner=line.invoice_id.partner_id,
         )
-        line.price_total = taxes['total_included']
+        openupgrade.logged_query(
+            env.cr, """
+                UPDATE account_invoice_line
+                SET price_total = %s
+                WHERE id = %s""", (str(taxes['total_included']), str(line.id))
+        )
     openupgrade.logger.debug("Compute finished")
 
 
