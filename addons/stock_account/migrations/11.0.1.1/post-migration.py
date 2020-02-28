@@ -148,7 +148,8 @@ def update_stock_move_value_fifo(env):
 
     # Valuate outgoing moves:
     env.cr.execute("""
-        SELECT sm.id, pt.id, sm.price_unit, sm.product_uom_qty
+        WITH tmp AS (
+        SELECT sm.id as id
         FROM stock_move sm
         INNER JOIN stock_location loc_from
         ON sm.location_id = loc_from.id
@@ -163,14 +164,11 @@ def update_stock_move_value_fifo(env):
             AND (loc_to.company_id IS NULL
                 OR loc_from.usage <> 'internal')
             AND sm.state = 'done'
-    """)
-    for move, tmpl_id, price_unit, product_uom_qty in env.cr.fetchall():
-        # Update value based on quants that a linked to this move.
-        env.cr.execute("""
+        )
             UPDATE stock_move AS to_update
             SET value = -q1.value
             FROM (
-                SELECT sum(sq.quantity*sq.cost) as value
+            SELECT sum(sq.quantity*sq.cost) as value, sm.id as id
                 FROM stock_quant_move_rel sqsm
                 INNER JOIN stock_move sm
                 ON sqsm.move_id = sm.id
@@ -178,10 +176,11 @@ def update_stock_move_value_fifo(env):
                 ON sqsm.quant_id = sq.id
                 INNER JOIN stock_location sl
                 ON sq.location_id = sl.id
-                WHERE sm.id = %s
-                ) AS q1
-            WHERE to_update.id = %s
-        """, (move, move))
+            INNER JOIN tmp
+                ON tmp.id = sm.id
+            GROUP by sm.id) AS q1
+        WHERE to_update.id = q1.id
+    """)
 
 
 @openupgrade.migrate(use_env=True)
