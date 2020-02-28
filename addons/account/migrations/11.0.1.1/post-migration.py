@@ -139,6 +139,109 @@ def fill_account_move_line_tax_base_amount(env):
     )
 
 
+@openupgrade.logging()
+def fill_account_invoice_tax_base_amount(env):
+    AccountTax = env['account.tax']
+    ResCurrency = env["res.currency"]
+    ProductProduct = env["product.product"]
+    AccountInvoiceTax = env["account.invoice.tax"]
+    tax_grouped = {}
+    # We group account invoice tax that have the same price_unit, discount,
+    # currency_id, quantity, product_id and invoice_line_tax_ids, account_id
+    # amd invoice_type since they will have the same base_amount value
+    env.cr.execute("""
+        SELECT STRING_AGG(invoice_id::CHARACTER varying, ',') invoice_id, 
+                price_unit, discount, currency_id,
+                quantity, product_id, tax_id, account_id, invoice_type
+        FROM (
+            SELECT aml.*, ailt.tax_id AS tax_id, ai.TYPE AS invoice_type
+            FROM account_invoice_line AS aml
+            LEFT JOIN (
+                    SELECT invoice_line_id, 
+                            STRING_AGG(tax_id::CHARACTER varying, ',') tax_id
+                    FROM account_invoice_line_tax
+                    GROUP BY invoice_line_id) AS ailt
+                ON aml.id = ailt.invoice_line_id
+            LEFT JOIN account_invoice AS ai
+                ON ai.id = aml.invoice_id
+            WHERE tax_id IS NOT NULL) AS sub
+        GROUP BY price_unit, discount, currency_id, quantity, product_id, 
+                tax_id, account_id, invoice_type;
+    """)
+
+    # We iterate over every group of account invoice tax where:
+    # row[0] : (invoice_1, invoice_id_2, ...) invoice_ids
+    # row[1] : price_unit
+    # row[2] : discount
+    # row[3] : currency_id
+    # row[4] : quantity
+    # row[5] : product_id
+    # row[6] : (tax_id_1, tax_id_2, ...) invoice_line_tax_ids
+    # row[7] : account_id
+    # row[8] : invoice_type
+    for row in env.cr.fetchall():
+        # We compute the taxes for the group
+        price = row[1] * (1 - (row[2] or 0.0) / 100.0)
+        invoice_line_tax_ids = AccountTax.browse(
+            [int(line_id) for line_id in row[6].split(",")])
+        currency_id = ResCurrency.browse(
+            int(row[3])) if row[3] else None
+        round_curr = currency_id.round
+        product_id = ProductProduct.browse(
+            int(row[5])) if row[5] else None
+        taxes = invoice_line_tax_ids.compute_all(
+            price, currency_id, row[4], product=product_id,
+            partner=False)['taxes']
+
+        # For every invoice in this group we compute the tax_grouped dict
+        # Code from Odoo adapted
+        for invoice_id in [int(invoice_id) for invoice_id in
+                           row[0].split(",")]:
+            if invoice_id not in tax_grouped:
+                tax_grouped[invoice_id] = {}
+            for tax in taxes:
+                val = {
+                    'tax_id': tax['id'],
+                    'amount': tax['amount'],
+                    'base': tax['base'],
+                    'account_id': (
+                            row[8] in ('out_invoice', 'in_invoice') and (
+                            tax['account_id'] or row[7]) or (
+                            tax['refund_account_id'] or row[7])
+                    ),
+                }
+                key = env['account.tax'].browse(tax['id']).get_grouping_key({
+                    'tax_id': val["tax_id"],
+                    'account_id': val["account_id"],
+                    'account_analytic_id': False,
+                })
+                if key not in tax_grouped[invoice_id]:
+                    tax_grouped[invoice_id][key] = val
+                    tax_grouped[invoice_id][key]['base'] = round_curr(
+                        val['base'])
+                else:
+                    tax_grouped[invoice_id][key]['amount'] += val['amount']
+                    tax_grouped[invoice_id][key]['base'] += round_curr(
+                        val['base'])
+
+    # Compute base_amount for every account_invoice_tax. Code taken from Odoo
+    for tax in AccountInvoiceTax.search([]):
+        tax.base = 0.0
+        if tax.tax_id:
+            key = tax.tax_id.get_grouping_key({
+                'tax_id': tax.tax_id.id,
+                'account_id': tax.account_id.id,
+                'account_analytic_id': tax.account_analytic_id.id,
+            })
+            if tax.invoice_id and key in tax_grouped[tax.invoice_id.id]:
+                tax.base = tax_grouped[tax.invoice_id.id][key]['base']
+            else:
+                openupgrade.logger.debug(
+                    'Tax Base Amount not computable probably due to a change '
+                    'in an underlying tax (%s).',
+                    tax.tax_id.name)
+
+
 @openupgrade.migrate()
 def migrate(env, version):
     # map old / non existing value 'proforma' and 'proforma2' to value 'draft'
@@ -186,6 +289,7 @@ def migrate(env, version):
             WHERE company_id = rc.id)""")
 
     migrate_account_tax_cash_basis(env)
+    fill_account_invoice_tax_base_amount(env)
     fill_account_invoice_line_total(env)
     fill_account_move_line_tax_base_amount(env)
 

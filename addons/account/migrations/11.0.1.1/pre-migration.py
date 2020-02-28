@@ -49,3 +49,6 @@ def migrate(env, version):
              'monetary', False, 'account'),
         ]
     )
+    openupgrade.logged_query(
+        env.cr,
+        "ALTER TABLE account_invoice_tax ADD COLUMN base NUMERIC")
