@@ -11,7 +11,7 @@ _model_renames = [
 _field_renames = [
     ('mail.channel', 'mail_channel', 'image', 'image_128'),
     ('mail.message', 'mail_message', 'layout', 'email_layout_xmlid'),
-    ('mail.message', 'mail_message', 'needaction_partner_ids', 'notified_partner_ids'),
+    # ('mail.message', 'mail_message', 'needaction_partner_ids', 'notified_partner_ids'),
     ('mail.notification', 'mail_message_res_partner_needaction_rel', 'email_status', 'notification_status'),
     ('mail.tracking.value', 'mail_tracking_value', 'track_sequence', 'tracking_sequence'),
 ]
