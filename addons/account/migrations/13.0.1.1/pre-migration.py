@@ -253,6 +253,17 @@ def add_helper_voucher_move_rel(env):
         ADD COLUMN old_voucher_line_id integer""",
     )
 
+def set_account_move_number_to_invoice_number(env):
+    # In case there was a specific sequence for invoices I take it for the existing account moves
+    openupgrade.logged_query(
+        env.cr, """
+        UPDATE account_move am0 SET name = ai.invoice_number
+        FROM account_invoice ai INNER JOIN account_move am
+        ON ai.move_id = am.id
+        WHERE ai.invoice_number is not null
+        AND am.id = am0.id
+        """
+    )
 
 @openupgrade.migrate()
 def migrate(env, version):
@@ -273,3 +284,6 @@ def migrate(env, version):
     add_helper_invoice_move_rel(env)
     if openupgrade.table_exists(cr, 'account_voucher'):
         add_helper_voucher_move_rel(env)
+    if openupgrade.column_exists(
+            env.cr, "account_invoice", "invoice_number"):
+        set_account_move_number_to_invoice_number(env)

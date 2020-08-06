@@ -22,6 +22,7 @@ merged_modules = {
     'hw_screen': 'hw_drivers',
     'l10n_fr_certification': 'account',
     'l10n_fr_sale_closing': 'l10n_fr',
+    'l10n_es_account_invoice_sequence': 'account',
     'mrp_bom_cost': 'mrp_account',
     'mrp_byproduct': 'mrp',
     'payment_stripe_sca': 'payment_stripe',
