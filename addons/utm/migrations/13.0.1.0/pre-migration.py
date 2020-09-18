@@ -40,9 +40,9 @@ def move_mailing_campaign_to_utm_campaign(env):
     openupgrade.logged_query(
         env.cr, """
         UPDATE utm_tag_rel utr
-        SET campaign_id = mmc.campaign_id
+        SET tag_id = mmc.campaign_id
         FROM mail_mass_mailing_campaign mmc
-        WHERE mmc.id = utr.campaign_id"""
+        WHERE mmc.id = utr.tag_id"""
     )
 
 
