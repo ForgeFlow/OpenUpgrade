@@ -118,7 +118,7 @@ def _create_dropshipped_svl(env, move, std_price_update):
 
     _change_standard_price(env, move, std_price_update)
     unit_cost = _get_price_unit(move, std_price_update)
-    company = move.product.env.company
+    company = move.product_id.env.company
     if move.product_id.cost_method == 'standard' and (company.id, move.product_id.id) in std_price_update:
         unit_cost = std_price_update[(company.id, move.product_id.id)]
 
