@@ -68,4 +68,4 @@ def migrate(env, version):
     fill_product_variant_combination_table(env)
     openupgrade.load_data(
         env.cr, "product", "migrations/13.0.1.2/noupdate_changes.xml")
-    convert_image_attachments(env)
+    # convert_image_attachments(env)
