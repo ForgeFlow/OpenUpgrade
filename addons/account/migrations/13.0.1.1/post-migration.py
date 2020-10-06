@@ -272,11 +272,13 @@ def migration_invoice_moves(env):
         INSERT INTO account_move_line (company_id, account_id,
         sequence, name, price_unit, currency_id, tax_base_amount,
         tax_line_id, analytic_account_id, move_id, old_invoice_tax_id,
+        exclude_from_invoice_tab, parent_state, quantity, partner_id,
         create_uid, create_date, write_uid, write_date)
         SELECT ait.company_id, ait.account_id, ait.sequence, ait.name,
         ait.amount, ait.currency_id, ait.base, ait.tax_id,
         ait.account_analytic_id, COALESCE(ai.move_id, am.id),
-        ait.id, ait.create_uid, ait.create_date, ait.write_uid, ait.write_date
+        ait.id,  TRUE, am.state, 1.0, ai.commercial_partner_id,
+        ait.create_uid, ait.create_date, ait.write_uid, ait.write_date
         FROM account_invoice_tax ait
         JOIN account_invoice ai ON ait.invoice_id = ai.id AND ai.state IN ('draft', 'cancel')
         LEFT JOIN account_move am ON am.old_invoice_id = ai.id
@@ -332,10 +334,8 @@ def migration_invoice_moves(env):
     )
     # Compute balance for Draft Invoice Lines
     draft_invoices = env['account.move'].search([('state', 'in', ('draft', 'cancel'))])
-    for invoice_line in draft_invoices.line_ids:
-        vals = invoice_line._get_fields_onchange_subtotal()
-        invoice_line.write(vals)
-    draft_invoices.with_context(check_move_validity=False)._recompute_dynamic_lines()
+    draft_invoices.line_ids._onchange_price_subtotal()
+    draft_invoices.with_context(check_move_validity=False)._recompute_dynamic_lines(recompute_all_taxes=True)
 
 
 def migration_voucher_moves(env):
