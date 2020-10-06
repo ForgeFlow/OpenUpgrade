@@ -140,7 +140,7 @@ def migrate(env, version):
     fill_unbuild_company_id(env.cr)
     fill_stock_picking_type_sequence_code(env)
     handle_unbuild_sequence(env)
-    fill_manufacture_mto_pull(env)
+    # fill_manufacture_mto_pull(env)
     fill_mrp_workorder_product_uom_id(env.cr)
     update_consumption(env)
     openupgrade.delete_records_safely_by_xml_id(env, _unlink_by_xmlid)
