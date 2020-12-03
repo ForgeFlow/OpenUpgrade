@@ -54,15 +54,15 @@ merged_modules = {
     # OCA/account-analytic
     # although model is defined in "analytic", logic is in "account"
     'account_analytic_distribution': 'account',
-    'account_asset_analytic': 'account_asset_management',
+    # 'account_asset_analytic': 'account_asset_management',
     # OCA/account-financial-reporting
     'customer_activity_statement': 'partner_statement',
     'customer_outstanding_statement': 'partner_statement',
     # OCA/account-financial-tools
-    'account_asset': 'account_asset_management',
-    'account_asset_depr_line_cancel': 'account_asset_management',
-    'account_asset_disposal': 'account_asset_management',
-    'account_asset_management_xls': 'account_asset_management',
+    # 'account_asset': 'account_asset_management',
+    # 'account_asset_depr_line_cancel': 'account_asset_management',
+    # 'account_asset_disposal': 'account_asset_management',
+    # 'account_asset_management_xls': 'account_asset_management',
     'account_reversal': 'account',
     # OCA/e-commerce
     'website_sale_default_country': 'website_sale',
@@ -110,9 +110,9 @@ renamed_models = {
     'sale.quote.template': 'sale.order.template',
     'stock.incoterms': 'account.incoterms',
     # OCA/account-financial-tools
-    'account.asset.asset': 'account.asset',
-    'account.asset.depreciation.line': 'account.asset.line',
-    'account.asset.category': 'account.asset.profile',
+    # 'account.asset.asset': 'account.asset',
+    # 'account.asset.depreciation.line': 'account.asset.line',
+    # 'account.asset.category': 'account.asset.profile',
 }
 
 # only used here for openupgrade_records analysis:
