@@ -14,6 +14,7 @@ from json import dumps
 
 import json
 import re
+import pdb
 
 #forbidden fields
 INTEGRITY_HASH_MOVE_FIELDS = ('date', 'journal_id', 'company_id')
@@ -927,6 +928,7 @@ class AccountMove(models.Model):
                 else:
                     # Create new line.
                     create_method = in_draft_mode and self.env['account.move.line'].new or self.env['account.move.line'].create
+                    pdb.set_trace()
                     candidate = create_method({
                         'name': self.invoice_payment_ref or '',
                         'debit': balance < 0.0 and -balance or 0.0,

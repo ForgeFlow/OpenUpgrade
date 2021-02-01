@@ -1,6 +1,7 @@
 # Copyright 2020 ForgeFlow <http://www.forgeflow.com>
 # License AGPL-3.0 or later (http://www.gnu.org/licenses/agpl.html).
 from openupgradelib import openupgrade
+import pdb
 
 
 def fill_account_reconcile_model_second_analytic_tag_rel_table(env):
@@ -482,6 +483,7 @@ def compute_balance_for_draft_invoice_lines(env):
         'tax_repartition_line_id',
     ])
     draft_invoices.line_ids._onchange_price_subtotal()
+    pdb.set_trace()
     draft_invoices._recompute_dynamic_lines(recompute_all_taxes=True)
 
 
