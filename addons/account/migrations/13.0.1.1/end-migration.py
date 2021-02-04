@@ -36,6 +36,13 @@ def add_default_account_data(env):
                 if code_main > 0 and code_main <= chart.code_digits:
                     code_acc = str(code_acc) + (
                         str("0" * (chart.code_digits - code_main)))
+                if env['account.account'].search([
+                    ('code', '=', code_acc),
+                    ('company_id', '=', company.id),
+                ]):
+                    # If there's already an account with the same code and company don't create it
+                    # as it is not allowed by a constraint.
+                    continue
                 tax_template_ref = {}
                 vals = chart._get_account_vals(
                     company, account_template, code_acc, tax_template_ref)
