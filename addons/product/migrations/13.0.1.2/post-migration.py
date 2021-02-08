@@ -46,19 +46,20 @@ def fill_product_variant_combination_table(env):
 
 
 def convert_image_attachments(env):
-    mapping = {
-        'product.product': "image_variant",
-        'product.template': "image",
-    }
-    for model, field in mapping.items():
-        Model = env[model]
-        attachments = env['ir.attachment'].search([
-            ('res_model', '=', model),
-            ('res_field', '=', field),
-            ('res_id', '!=', False),
-        ])
-        for attachment in attachments:
-            Model.browse(attachment.res_id).image_1920 = attachment.datas
+    pass
+    # mapping = {
+    #     'product.product': "image_variant",
+    #     'product.template': "image",
+    # }
+    # for model, field in mapping.items():
+    #     Model = env[model]
+    #     attachments = env['ir.attachment'].search([
+    #         ('res_model', '=', model),
+    #         ('res_field', '=', field),
+    #         ('res_id', '!=', False),
+    #     ])
+    #     for attachment in attachments:
+    #         Model.browse(attachment.res_id).image_1920 = attachment.datas
 
 
 @openupgrade.migrate()
