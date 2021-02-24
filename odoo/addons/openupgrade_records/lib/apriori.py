@@ -3,6 +3,8 @@ to help the matching process
 """
 
 renamed_modules = {
+    # Odoo Enterprise
+    'account_reports_followup': 'account_followup',
     # Odoo
     'crm_reveal': 'crm_iap_lead',
     'document': 'attachment_indexation',
