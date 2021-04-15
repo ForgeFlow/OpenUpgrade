@@ -13,12 +13,17 @@ from odoo.addons.base.models.ir_model import query_insert
 
 _logger = logging.getLogger(__name__)
 
+# Declare global index hat will be used to set the svl ids
+svl_id = 0
 # Declare global variant to avoid that it is passed between methods
 precision_price = 0
 
 
 def _prepare_common_svl_vals(move, product):
+    global svl_id
+    svl_id += 1
     return {
+        "id": svl_id,
         "create_uid": move["write_uid"],
         "create_date": move["date"],
         "write_uid": move["write_uid"],
@@ -64,10 +69,46 @@ def _prepare_out_svl_vals(move, quantity, unit_cost, product):
     return vals
 
 
+def _prepare_svl_usage_vals(index, move, quantity, value):
+    return {
+        "create_uid": move["write_uid"],
+        "create_date": move["date"],
+        "write_uid": move["write_uid"],
+        "write_date": move["date"],
+        "stock_valuation_layer_id": index,
+        "stock_move_id": move["id"],
+        "quantity": quantity,
+        "value": value,
+        "company_id": move["company_id"],
+        "product_id": move["product_id"],
+    }
+
+
+def create_table_stock_valuation_layer_usage(env):
+    env.cr.execute("""
+        CREATE TABLE stock_valuation_layer_usage (
+            id serial NOT NULL,
+            create_uid int4,
+            create_date timestamp without time zone,
+            write_date timestamp without time zone,
+            write_uid int4,
+            company_id int4,
+            stock_valuation_layer_id int4,
+            stock_move_id int4,
+            product_id int4,
+            quantity numeric,
+            value numeric,
+            primary key(id)
+        )""")
+
+
 def _prepare_man_svl_vals(price_history_rec, previous_price, quantity, company, product):
     diff = price_history_rec["cost"] - previous_price
     value = float_round(diff * quantity, precision_digits=precision_price)
+    global svl_id
+    svl_id += 1
     svl_vals = {
+        "id": svl_id,
         "create_uid": price_history_rec["write_uid"],
         "create_date": price_history_rec["datetime"],
         "write_uid": price_history_rec["write_uid"],
@@ -152,6 +193,11 @@ def generate_stock_valuation_layer(env):
     )
     company_obj = env["res.company"]
     product_obj = env["product.product"]
+    global svl_id
+    # we assure we get last value of the table
+    # just in case if the table is filled during the update
+    env.cr.execute("SELECT id FROM stock_valuation_layer LIMIT 1")
+    svl_id = (env.cr.fetchall() or [(svl_id, )])[0][0]
     # Needed to modify global variable
     global precision_price
     precision_price = env["decimal.precision"].precision_get("Product Price")
@@ -161,8 +207,13 @@ def generate_stock_valuation_layer(env):
     companies = company_obj.search([])
     products = product_obj.with_context(active_test=False).search([("type", "in", ("product", "consu"))])
     all_svl_list = []
+    all_svl_usage_list = []
+    usage = openupgrade.table_exists(env.cr, 'stock_valuation_layer_usage')
+    i = 1
     for product in products:
         for company in companies:
+            _logger.info("{} - Product {}, company {}".format(i, product.id, company.id))
+            i += 1
             history_lines = []
             if product.cost_method != "fifo":
                 history_lines = get_product_price_history(env, company.id, product.id)
@@ -170,6 +221,7 @@ def generate_stock_valuation_layer(env):
             svl_in_vals_list = []
             svl_out_vals_list = []
             svl_man_vals_list = []
+            svl_usage_vals_list = []
             svl_in_index = 0
             h_index = 0
             previous_price = 0.0
@@ -207,17 +259,29 @@ def generate_stock_valuation_layer(env):
                 if move["move_type"] == "out" or is_dropship:
                     qty = move["product_qty"]
                     if product.cost_method in ("average", "fifo") and not is_dropship:
-                        # Reduce remaininig qty in svl of type "in"
+                        # Reduce remaining qty in svl of type "in"
                         while qty > 0 and svl_in_index < len(svl_in_vals_list):
                             if svl_in_vals_list[svl_in_index]["remaining_qty"] >= qty:
                                 candidate_cost = (svl_in_vals_list[svl_in_index]["remaining_value"] /
                                                   svl_in_vals_list[svl_in_index]["remaining_qty"])
+                                if usage:
+                                    # Prepare layer usage
+                                    svl_usage_vals = _prepare_svl_usage_vals(
+                                        svl_in_vals_list[svl_in_index]["id"], move, qty, candidate_cost*qty)
+                                    svl_usage_vals_list.append(svl_usage_vals)
                                 svl_in_vals_list[svl_in_index]["remaining_qty"] -= qty
                                 svl_in_vals_list[svl_in_index]["remaining_value"] = float_round(
                                     candidate_cost * svl_in_vals_list[svl_in_index]["remaining_qty"],
                                     precision_digits=precision_price)
                                 qty = 0
                             else:
+                                if usage:
+                                    # Prepare layer usage
+                                    svl_usage_vals = _prepare_svl_usage_vals(
+                                        svl_in_vals_list[svl_in_index]["id"],
+                                        move, svl_in_vals_list[svl_in_index]["remaining_qty"],
+                                        svl_in_vals_list[svl_in_index]["remaining_value"])
+                                    svl_usage_vals_list.append(svl_usage_vals)
                                 qty -= svl_in_vals_list[svl_in_index]["remaining_qty"]
                                 svl_in_vals_list[svl_in_index]["remaining_qty"] = 0.0
                                 svl_in_vals_list[svl_in_index]["remaining_value"] = 0.0
@@ -243,14 +307,22 @@ def generate_stock_valuation_layer(env):
                         previous_price = price_history_rec["cost"]
                     h_index += 1
             all_svl_list.extend(svl_in_vals_list + svl_out_vals_list + svl_man_vals_list)
+            if usage:
+                all_svl_usage_list.extend(svl_usage_vals_list)
     if all_svl_list:
         all_svl_list = sorted(all_svl_list, key=lambda k: (k["create_date"]))
         _logger.info("To create {} svl records".format(len(all_svl_list)))
         query_insert(env.cr, "stock_valuation_layer", all_svl_list)
+    if all_svl_usage_list:
+        all_svl_usage_list = sorted(all_svl_usage_list, key=lambda k: (k["create_date"]))
+        _logger.info("To create {} svl usage records".format(len(all_svl_usage_list)))
+        query_insert(env.cr, "stock_valuation_layer_usage", all_svl_usage_list)
 
 
 @openupgrade.migrate()
 def migrate(env, version):
+    if not openupgrade.table_exists(env.cr, 'stock_valuation_layer_usage'):
+        create_table_stock_valuation_layer_usage(env)
     generate_stock_valuation_layer(env)
     openupgrade.delete_records_safely_by_xml_id(
         env, [
@@ -260,3 +332,9 @@ def migrate(env, version):
             "stock_account.property_stock_account_output_prd",
         ]
     )
+    openupgrade.logged_query(env.cr, """
+    SELECT setval('stock_valuation_layer_id_seq',
+        (SELECT MAX(id) FROM stock_valuation_layer)+1)""")
+    openupgrade.logged_query(env.cr, """
+    SELECT setval('stock_valuation_layer_usage_id_seq',
+        (SELECT MAX(id) FROM stock_valuation_layer_usage)+1)""")
