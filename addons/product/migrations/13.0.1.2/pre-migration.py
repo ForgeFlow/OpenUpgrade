@@ -62,21 +62,21 @@ def insert_missing_product_template_attribute_line(env):
         "active", "product.template.attribute.line",
         "product_template_attribute_line", "boolean", False, "product", True,
     )])
-    openupgrade.logged_query(
-        env.cr,
-        """
-        INSERT INTO product_template_attribute_line
-            (active, product_tmpl_id, attribute_id)
-        SELECT False, pp.product_tmpl_id, pav.attribute_id
-        FROM product_attribute_value_product_product_rel pavppr
-        JOIN product_product pp ON pp.id = pavppr.product_product_id
-        JOIN product_attribute_value pav ON pav.id = pavppr.product_attribute_value_id
-        LEFT JOIN product_template_attribute_line ptal
-            ON ptal.product_tmpl_id = pp.product_tmpl_id
-                AND ptal.attribute_id = pav.attribute_id
-        WHERE ptal.id IS NULL
-        GROUP BY pav.attribute_id, pp.product_tmpl_id""",
-    )
+    # openupgrade.logged_query(
+    #     env.cr,
+    #     """
+    #     INSERT INTO product_template_attribute_line
+    #         (active, product_tmpl_id, attribute_id)
+    #     SELECT False, pp.product_tmpl_id, pav.attribute_id
+    #     FROM product_attribute_value_product_product_rel pavppr
+    #     JOIN product_product pp ON pp.id = pavppr.product_product_id
+    #     JOIN product_attribute_value pav ON pav.id = pavppr.product_attribute_value_id
+    #     LEFT JOIN product_template_attribute_line ptal
+    #         ON ptal.product_tmpl_id = pp.product_tmpl_id
+    #             AND ptal.attribute_id = pav.attribute_id
+    #     WHERE ptal.id IS NULL
+    #     GROUP BY pav.attribute_id, pp.product_tmpl_id""",
+    # )
 
 
 def insert_missing_product_template_attribute_value(env):
@@ -106,21 +106,21 @@ def insert_missing_product_template_attribute_value(env):
         "ptav_active", "product.template.attribute.value",
         "product_template_attribute_value", "boolean", False, "product", True,
     )])
-    openupgrade.logged_query(
-        env.cr,
-        """
-        INSERT INTO product_template_attribute_value
-            (ptav_active, product_attribute_value_id, product_tmpl_id)
-        SELECT
-            False, pavppr.product_attribute_value_id, pp.product_tmpl_id
-        FROM product_attribute_value_product_product_rel pavppr
-        JOIN product_product pp ON pp.id = pavppr.product_product_id
-        LEFT JOIN product_template_attribute_value ptav
-            ON ptav.product_attribute_value_id = pavppr.product_attribute_value_id
-            AND ptav.product_tmpl_id = pp.product_tmpl_id
-        WHERE ptav.id IS NULL
-        GROUP BY pavppr.product_attribute_value_id, pp.product_tmpl_id""",
-    )
+    # openupgrade.logged_query(
+    #     env.cr,
+    #     """
+    #     INSERT INTO product_template_attribute_value
+    #         (ptav_active, product_attribute_value_id, product_tmpl_id)
+    #     SELECT
+    #         False, pavppr.product_attribute_value_id, pp.product_tmpl_id
+    #     FROM product_attribute_value_product_product_rel pavppr
+    #     JOIN product_product pp ON pp.id = pavppr.product_product_id
+    #     LEFT JOIN product_template_attribute_value ptav
+    #         ON ptav.product_attribute_value_id = pavppr.product_attribute_value_id
+    #         AND ptav.product_tmpl_id = pp.product_tmpl_id
+    #     WHERE ptav.id IS NULL
+    #     GROUP BY pavppr.product_attribute_value_id, pp.product_tmpl_id""",
+    # )
 
 
 def calculate_product_product_combination_indices(env):
