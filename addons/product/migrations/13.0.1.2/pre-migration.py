@@ -175,6 +175,7 @@ def fill_product_template_attribute_value_attribute_line_id(env):
         "ALTER TABLE product_template_attribute_value "
         "ADD COLUMN attribute_line_id INT4",
     )
+    # use ptal.active = TRUE
     openupgrade.logged_query(
         env.cr, """
         UPDATE product_template_attribute_value ptav
@@ -186,6 +187,19 @@ def fill_product_template_attribute_value_attribute_line_id(env):
         WHERE ptal.active = TRUE AND ptav.product_tmpl_id = pt.id AND
             ptav.product_attribute_value_id = avtalr.product_attribute_value_id
         """,
+    )
+    # use ptal.active != TRUE
+    openupgrade.logged_query(
+        env.cr, """
+        UPDATE product_template_attribute_value ptav
+        SET attribute_line_id = ptal.id
+        FROM product_template_attribute_line ptal
+        JOIN product_attribute_value_product_template_attribute_line_rel
+            avtalr ON avtalr.product_template_attribute_line_id = ptal.id
+        WHERE ptal.active IS DISTINCT FROM TRUE AND
+            ptav.product_tmpl_id = ptal.product_tmpl_id AND
+            ptav.product_attribute_value_id = avtalr.product_attribute_value_id
+            AND ptav.attribute_line_id IS NULL""",
     )
 
 
