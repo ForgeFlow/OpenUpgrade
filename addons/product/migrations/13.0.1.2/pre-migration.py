@@ -168,6 +168,27 @@ def calculate_product_product_combination_indices(env):
     )
 
 
+def fill_product_template_attribute_value_attribute_line_id(env):
+    """Done in pre because the field attribute_line_id of ptav is required."""
+    openupgrade.logged_query(
+        env.cr,
+        "ALTER TABLE product_template_attribute_value "
+        "ADD COLUMN attribute_line_id INT4",
+    )
+    openupgrade.logged_query(
+        env.cr, """
+        UPDATE product_template_attribute_value ptav
+        SET attribute_line_id = ptal.id
+        FROM product_template_attribute_line ptal
+        JOIN product_template pt ON ptal.product_tmpl_id = pt.id
+        JOIN product_attribute_value_product_template_attribute_line_rel
+            avtalr ON avtalr.product_template_attribute_line_id = ptal.id
+        WHERE ptal.active = TRUE AND ptav.product_tmpl_id = pt.id AND
+            ptav.product_attribute_value_id = avtalr.product_attribute_value_id
+        """,
+    )
+
+
 def add_product_template_attribute_value__attribute_id_column(env):
     """For avoiding that ORM fills it. We fill it later on post-migration."""
     openupgrade.logged_query(
@@ -190,4 +211,5 @@ def migrate(env, version):
     insert_missing_product_template_attribute_line(env)
     insert_missing_product_template_attribute_value(env)
     calculate_product_product_combination_indices(env)
+    fill_product_template_attribute_value_attribute_line_id(env)
     add_product_template_attribute_value__attribute_id_column(env)
