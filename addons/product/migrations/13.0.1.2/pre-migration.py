@@ -124,19 +124,27 @@ def insert_missing_product_template_attribute_value(env):
         "product_template_attribute_value", "boolean", False, "product", True,
     )])
     openupgrade.logged_query(
-        env.cr,
-        """
+        env.cr, """
         INSERT INTO product_template_attribute_value
-            (ptav_active, product_attribute_value_id, product_tmpl_id)
+            (ptav_active, product_attribute_value_id, product_tmpl_id, attribute_line_id)
         SELECT
-            False, pavppr.product_attribute_value_id, pp.product_tmpl_id
+            False, pavppr.product_attribute_value_id, pp.product_tmpl_id,
+            pavptalr.product_template_attribute_line_id
         FROM product_attribute_value_product_product_rel pavppr
         JOIN product_product pp ON pp.id = pavppr.product_product_id
+        JOIN product_attribute_value pav ON pav.id = pavppr.product_attribute_value_id
+        JOIN product_attribute_value_product_template_attribute_line_rel pavptalr
+            ON pavptalr.product_attribute_value_id = pav.id
+        JOIN product_template_attribute_line ptal ON (
+            pavptalr.product_template_attribute_line_id = ptal.id
+            AND ptal.product_tmpl_id = pp.product_tmpl_id)
         LEFT JOIN product_template_attribute_value ptav
-            ON ptav.product_attribute_value_id = pavppr.product_attribute_value_id
+            ON (ptav.product_attribute_value_id = pav.id
             AND ptav.product_tmpl_id = pp.product_tmpl_id
+            AND ptav.attribute_line_id = ptal.id)
         WHERE ptav.id IS NULL
-        GROUP BY pavppr.product_attribute_value_id, pp.product_tmpl_id""",
+        GROUP BY pavppr.product_attribute_value_id, pp.product_tmpl_id,
+            pavptalr.product_template_attribute_line_id""",
     )
 
 
@@ -169,7 +177,9 @@ def calculate_product_product_combination_indices(env):
 
 
 def fill_product_template_attribute_value_attribute_line_id(env):
-    """Done in pre because the field attribute_line_id of ptav is required."""
+    """Done in pre because the field attribute_line_id of ptav is required.
+    As this field is already filled in archived ptavs (in missing ptavs query),
+    we fill it here for active ptavs"""
     openupgrade.logged_query(
         env.cr,
         "ALTER TABLE product_template_attribute_value "
@@ -186,7 +196,7 @@ def fill_product_template_attribute_value_attribute_line_id(env):
             avtalr ON avtalr.product_template_attribute_line_id = ptal.id
         WHERE ptal.active = TRUE AND ptav.product_tmpl_id = pt.id AND
             ptav.product_attribute_value_id = avtalr.product_attribute_value_id
-        """,
+            AND ptav.attribute_line_id IS NULL""",
     )
     # use ptal.active != TRUE
     openupgrade.logged_query(
@@ -223,7 +233,7 @@ def migrate(env, version):
         "product_template_attribute_value",
         ['product_attribute_value_id', 'product_tmpl_id'])
     insert_missing_product_template_attribute_line(env)
+    fill_product_template_attribute_value_attribute_line_id(env)
     insert_missing_product_template_attribute_value(env)
     calculate_product_product_combination_indices(env)
-    fill_product_template_attribute_value_attribute_line_id(env)
     add_product_template_attribute_value__attribute_id_column(env)
