@@ -58,14 +58,18 @@ def insert_missing_product_template_attribute_line(env):
     From the current data status we find on v12 for these cases, we need to
     reintroduce missing product.template.attribute.line records with
     active = False needed later on next steps for DB integrity.
+
+    Lastly, we fill the m2m table for the field pav_attribute_line_ids which is
+    product_attribute_value_product_template_attribute_line_rel. We use
+    later this table to fill attribute_line_id of ptavs.
     """
     openupgrade.add_fields(env, [(
         "active", "product.template.attribute.line",
         "product_template_attribute_line", "boolean", False, "product", True,
     )])
     openupgrade.logged_query(
-        env.cr,
-        """
+        env.cr, """
+    WITH insert_ptal AS (
         INSERT INTO product_template_attribute_line
             (active, product_tmpl_id, attribute_id)
         SELECT False, pp.product_tmpl_id, pav.attribute_id
@@ -73,10 +77,22 @@ def insert_missing_product_template_attribute_line(env):
         JOIN product_product pp ON pp.id = pavppr.product_product_id
         JOIN product_attribute_value pav ON pav.id = pavppr.product_attribute_value_id
         LEFT JOIN product_template_attribute_line ptal
-            ON ptal.product_tmpl_id = pp.product_tmpl_id
-                AND ptal.attribute_id = pav.attribute_id
+            ON (ptal.product_tmpl_id = pp.product_tmpl_id
+                AND ptal.attribute_id = pav.attribute_id)
         WHERE ptal.id IS NULL
-        GROUP BY pav.attribute_id, pp.product_tmpl_id""",
+        GROUP BY pav.attribute_id, pp.product_tmpl_id
+        RETURNING id,product_tmpl_id,attribute_id
+    )
+    INSERT INTO product_attribute_value_product_template_attribute_line_rel
+        (product_attribute_value_id, product_template_attribute_line_id)
+    SELECT pav.id, insert_ptal.id
+    FROM product_attribute_value_product_product_rel pavppr
+    JOIN product_product pp ON pp.id = pavppr.product_product_id
+    JOIN product_attribute_value pav ON pav.id = pavppr.product_attribute_value_id
+    JOIN insert_ptal ON (
+        insert_ptal.product_tmpl_id = pp.product_tmpl_id
+        AND insert_ptal.attribute_id = pav.attribute_id)
+    GROUP BY pav.id, insert_ptal.id""",
     )
 
 

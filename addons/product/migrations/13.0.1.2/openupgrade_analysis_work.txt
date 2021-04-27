@@ -7,7 +7,7 @@ product      / product.attribute        / product_tmpl_ids (many2many)  : NEW re
 # NOTHING TO DO: is a new compute, so we could precreate and fill to speed up, but not needed because usually there are few records
 
 product      / product.attribute.value  / pav_attribute_line_ids (many2many): NEW relation: product.template.attribute.line
-# NOTHING TO DO: Inverse many2many of an existing m2m table
+# DONE: pre-migration: although it's inverse many2many of an existing m2m table, we have to fill with archived ptals
 
 product      / product.packaging        / company_id (many2one)         : NEW relation: res.company
 # NOTHING TO DO: New field not required that restricts per company visibility, so we leave it empty
