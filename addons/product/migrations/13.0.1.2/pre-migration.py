@@ -88,6 +88,39 @@ def insert_missing_product_template_attribute_line(env):
         AND insert_ptal.attribute_id = pav.attribute_id)
     GROUP BY pav.id, insert_ptal.id""",
     )
+    if openupgrade.table_exists(env.cr, "mrp_bom_line"):
+        # make use of mrp_bom_line_product_attribute_value_rel
+        openupgrade.logged_query(
+            env.cr, """
+        WITH insert_ptal AS (
+            INSERT INTO product_template_attribute_line
+                (active, product_tmpl_id, attribute_id)
+            SELECT False, pt.id, pav.attribute_id
+            FROM mrp_bom_line_product_attribute_value_rel mblpavr
+            JOIN mrp_bom_line mbl ON mbl.id = mblpavr.mrp_bom_line_id
+            JOIN mrp_bom mb ON mbl.bom_id = mb.id
+            JOIN product_template pt ON pt.id = mb.product_tmpl_id
+            JOIN product_attribute_value pav ON pav.id = mblpavr.product_attribute_value_id
+            LEFT JOIN product_template_attribute_line ptal
+                ON (ptal.product_tmpl_id = pt.id
+                    AND ptal.attribute_id = pav.attribute_id)
+            WHERE ptal.id IS NULL
+            GROUP BY pav.attribute_id, pt.id
+            RETURNING id,product_tmpl_id,attribute_id
+        )
+        INSERT INTO product_attribute_value_product_template_attribute_line_rel
+            (product_attribute_value_id, product_template_attribute_line_id)
+        SELECT pav.id, insert_ptal.id
+        FROM mrp_bom_line_product_attribute_value_rel mblpavr
+        JOIN mrp_bom_line mbl ON mbl.id = mblpavr.mrp_bom_line_id
+        JOIN mrp_bom mb ON mbl.bom_id = mb.id
+        JOIN product_template pt ON pt.id = mb.product_tmpl_id
+        JOIN product_attribute_value pav ON pav.id = mblpavr.product_attribute_value_id
+        JOIN insert_ptal ON (
+            insert_ptal.product_tmpl_id = pt.id
+            AND insert_ptal.attribute_id = pav.attribute_id)
+        GROUP BY pav.id, insert_ptal.id""",
+        )
 
 
 def insert_missing_product_template_attribute_value(env):
@@ -140,6 +173,33 @@ def insert_missing_product_template_attribute_value(env):
         GROUP BY pavppr.product_attribute_value_id, pp.product_tmpl_id,
             pavptalr.product_template_attribute_line_id""",
     )
+    if openupgrade.table_exists(env.cr, "mrp_bom_line"):
+        # make use of mrp_bom_line_product_attribute_value_rel
+        openupgrade.logged_query(
+            env.cr, """
+            INSERT INTO product_template_attribute_value
+                (ptav_active, product_attribute_value_id, product_tmpl_id, attribute_line_id)
+            SELECT
+                False, mblpavr.product_attribute_value_id, pt.id,
+                pavptalr.product_template_attribute_line_id
+            FROM mrp_bom_line_product_attribute_value_rel mblpavr
+            JOIN mrp_bom_line mbl ON mbl.id = mblpavr.mrp_bom_line_id
+            JOIN mrp_bom mb ON mbl.bom_id = mb.id
+            JOIN product_template pt ON pt.id = mb.product_tmpl_id
+            JOIN product_attribute_value pav ON pav.id = mblpavr.product_attribute_value_id
+            JOIN product_attribute_value_product_template_attribute_line_rel pavptalr
+                ON pavptalr.product_attribute_value_id = pav.id
+            JOIN product_template_attribute_line ptal ON (
+                pavptalr.product_template_attribute_line_id = ptal.id
+                AND ptal.product_tmpl_id = pt.id)
+            LEFT JOIN product_template_attribute_value ptav
+                ON (ptav.product_attribute_value_id = pav.id
+                AND ptav.product_tmpl_id = pt.id
+                AND ptav.attribute_line_id = ptal.id)
+            WHERE ptav.id IS NULL
+            GROUP BY mblpavr.product_attribute_value_id, pt.id,
+                pavptalr.product_template_attribute_line_id""",
+        )
 
 
 def calculate_product_product_combination_indices(env):

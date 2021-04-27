@@ -15,9 +15,9 @@ def fill_product_variant_combination_table(env):
         JOIN product_product pp
             ON pp.id = pavppr.product_product_id
         JOIN product_template_attribute_value ptav
-            ON ptav.product_attribute_value_id = pavppr.product_attribute_value_id
-                AND pp.product_tmpl_id = ptav.product_tmpl_id
-        """,
+            ON (ptav.product_attribute_value_id = pavppr.product_attribute_value_id
+                AND pp.product_tmpl_id = ptav.product_tmpl_id)
+        GROUP BY pavppr.product_product_id, ptav.id""",
     )
 
 
