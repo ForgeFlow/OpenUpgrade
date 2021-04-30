@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-
+import logging
 from odoo import api, fields, models, _
 from odoo.exceptions import RedirectWarning, UserError, ValidationError, AccessError
 from odoo.tools import float_is_zero, float_compare, safe_eval, date_utils, email_split, email_escape_char, email_re
@@ -14,6 +14,8 @@ from json import dumps
 
 import json
 import re
+
+_logger = logging.getLogger(__name__)
 
 #forbidden fields
 INTEGRITY_HASH_MOVE_FIELDS = ('date', 'journal_id', 'company_id')
@@ -587,6 +589,7 @@ class AccountMove(models.Model):
         # ==== Add tax lines ====
         to_remove = self.env['account.move.line']
         for line in self.line_ids.filtered('tax_repartition_line_id'):
+            _logger.info("groupings line {} from invoice {}".format(line.id, line.move_id.id))
             grouping_dict = self._get_tax_grouping_key_from_tax_line(line)
             grouping_key = _serialize_tax_grouping_key(grouping_dict)
             if grouping_key in taxes_map:
@@ -606,6 +609,7 @@ class AccountMove(models.Model):
 
         # ==== Mount base lines ====
         for line in self.line_ids.filtered(lambda line: not line.tax_repartition_line_id):
+            _logger.info("compute base line {} from invoice {}".format(line.id, line.move_id.id))
             # Don't call compute_all if there is no tax.
             if not line.tax_ids:
                 if not recompute_tax_base_amount:
@@ -645,6 +649,7 @@ class AccountMove(models.Model):
 
         # ==== Process taxes_map ====
         for taxes_map_entry in taxes_map.values():
+            _logger.info("tax map entries")
             # Don't create tax lines with zero balance.
             if self.currency_id.is_zero(taxes_map_entry['balance']) and self.currency_id.is_zero(taxes_map_entry['amount_currency']):
                 taxes_map_entry['grouping_dict'] = False
@@ -688,7 +693,9 @@ class AccountMove(models.Model):
                 })
 
             if tax_line and in_draft_mode:
+                _logger.info("onchange amount currency for tax_line")
                 tax_line._onchange_amount_currency()
+                _logger.info("onchange balance for tax_line")
                 tax_line._onchange_balance()
 
     @api.model
@@ -984,7 +991,8 @@ class AccountMove(models.Model):
         :param recompute_all_taxes: Force the computation of taxes. If set to False, the computation will be done
                                     or not depending of the field 'recompute_tax_line' in lines.
         '''
-        for invoice in self:
+        for i, invoice in enumerate(self):
+            _logger.info("{} recompute dynamic lines for invoice {}-{}".format(i, invoice.id, invoice.name))
             # Dispatch lines and pre-compute some aggregated values like taxes.
             for line in invoice.line_ids:
                 if line.recompute_tax_line:
@@ -994,20 +1002,24 @@ class AccountMove(models.Model):
             # Compute taxes.
             if recompute_all_taxes:
                 invoice._recompute_tax_lines()
+                _logger.info("all taxes recomputed (without tax_base_amount)")
             if recompute_tax_base_amount:
                 invoice._recompute_tax_lines(recompute_tax_base_amount=True)
+                _logger.info("all taxes recomputed (with tax_base_amount)")
 
             if invoice.is_invoice(include_receipts=True):
-
+                _logger.info("recompute cash_rouding begins")
                 # Compute cash rounding.
                 invoice._recompute_cash_rounding_lines()
-
+                _logger.info("recompute cash_rouding ends. computing payment terms now")
                 # Compute payment terms.
                 invoice._recompute_payment_terms_lines()
+                _logger.info("recompute payment terms ends")
 
                 # Only synchronize one2many in onchange.
                 if invoice != invoice._origin:
                     invoice.invoice_line_ids = invoice.line_ids.filtered(lambda line: not line.exclude_from_invoice_tab)
+                    _logger.info("one2many syncronized")
 
     @api.depends('journal_id')
     def _compute_company_id(self):

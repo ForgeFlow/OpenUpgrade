@@ -1,8 +1,11 @@
 # Copyright 2020 ForgeFlow <http://www.forgeflow.com>
 # Copyright 2021 Tecnativa - Pedro M. Baeza
 # License AGPL-3.0 or later (http://www.gnu.org/licenses/agpl.html).
+import logging
 from openupgradelib import openupgrade
 from psycopg2 import sql
+
+_logger = logging.getLogger(__name__)
 
 
 def fill_account_reconcile_model_second_analytic_tag_rel_table(env):
@@ -437,13 +440,18 @@ def migration_invoice_moves(env):
 
 def compute_balance_for_draft_invoice_lines(env):
     # Compute balance for Draft Invoice Lines
+    _logger.info("begin compute_balance_for_draft_invoice_lines method")
     draft_invoices = env['account.move'].search([
         ('state', 'in', ('draft', 'cancel')),
         ('type', 'in', ('out_invoice', 'out_refund', 'in_invoice', 'in_refund')),
     ]).with_context(check_move_validity=False)
+    _logger.info("draft invoices %s", len(draft_invoices))
     draft_invoices.line_ids.read()
+    _logger.info("invoices are read")
     draft_invoices.line_ids._onchange_price_subtotal()
+    _logger.info("recompute dynamic lines begins")
     draft_invoices._recompute_dynamic_lines(recompute_all_taxes=True)
+    _logger.info("end compute_balance_for_draft_invoice_lines method")
 
 
 def migration_voucher_moves(env):
@@ -971,6 +979,7 @@ def migrate(env, version):
     assign_tax_repartition_line_to_move_lines(env)
     assign_account_tags_to_move_lines(env)
     compute_balance_for_draft_invoice_lines(env)
+    _logger.info("begin load data")
     openupgrade.load_data(
         env.cr, "account", "migrations/13.0.1.1/noupdate_changes.xml")
     openupgrade.delete_record_translations(
