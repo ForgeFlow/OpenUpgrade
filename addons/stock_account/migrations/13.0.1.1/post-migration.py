@@ -272,7 +272,7 @@ def generate_stock_valuation_layer(env):
                                     candidate_cost * svl_in_vals_list[svl_in_index]["remaining_qty"],
                                     precision_digits=precision_price)
                                 qty = 0
-                            else:
+                            elif svl_in_vals_list[svl_in_index]["remaining_qty"]:
                                 if usage:
                                     # Prepare layer usage
                                     svl_usage_vals = _prepare_svl_usage_vals(
@@ -281,6 +281,10 @@ def generate_stock_valuation_layer(env):
                                         svl_in_vals_list[svl_in_index]["remaining_value"])
                                     svl_usage_vals_list.append(svl_usage_vals)
                                 qty -= svl_in_vals_list[svl_in_index]["remaining_qty"]
+                                svl_in_vals_list[svl_in_index]["remaining_qty"] = 0.0
+                                svl_in_vals_list[svl_in_index]["remaining_value"] = 0.0
+                                svl_in_index += 1
+                            else:
                                 svl_in_vals_list[svl_in_index]["remaining_qty"] = 0.0
                                 svl_in_vals_list[svl_in_index]["remaining_value"] = 0.0
                                 svl_in_index += 1
