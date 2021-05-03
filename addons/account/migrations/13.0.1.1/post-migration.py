@@ -261,6 +261,16 @@ def migration_invoice_moves(env):
                     OR ail.account_analytic_id = aml.analytic_account_id)"""))
             ),
         )
+        # Same strict criteria, but without partners matching
+        openupgrade.logged_query(
+            env.cr,
+            query.format(
+                where=(sql.SQL(minimal_where + """
+                AND ail.account_id = aml.account_id
+                AND ((ail.account_analytic_id IS NULL AND aml.analytic_account_id IS NULL)
+                    OR ail.account_analytic_id = aml.analytic_account_id)"""))
+            ),
+        )
         # Try now with a more relaxed criteria, as it's possible that users change some data on amls
         openupgrade.logged_query(
             env.cr,
