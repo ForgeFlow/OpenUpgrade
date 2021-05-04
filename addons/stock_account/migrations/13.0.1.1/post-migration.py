@@ -173,11 +173,14 @@ def get_stock_moves(env, company_id, product_id):
                  WHEN sl.usage = 'supplier' AND sld.usage = 'customer' THEN 'dropship'
                  WHEN sl.usage = 'customer' AND sld.usage = 'supplier' THEN 'dropship_return'
                  ELSE 'other'
-            END AS move_type
+            END AS move_type,
+            move_orig.move_orig_id, move_dest.move_dest_id
         FROM stock_move sm
         LEFT JOIN stock_location sl ON sl.id = sm.location_id
         LEFT JOIN stock_location sld ON sld.id = sm.location_dest_id
         LEFT JOIN account_move_rel rel ON rel.stock_move_id = sm.id
+        LEFT JOIN stock_move_move_rel move_orig ON sm.id = move_orig.move_orig_id
+        LEFT JOIN stock_move_move_rel move_dest ON sm.id = move_dest.move_dest_id
         WHERE sm.company_id = %s AND sm.product_id = %s AND state = 'done'
         ORDER BY sm.date, sm.id
     """, (company_id, product_id))
@@ -217,6 +220,7 @@ def generate_stock_valuation_layer(env):
                 history_lines = get_product_price_history(env, company.id, product.id)
             moves = get_stock_moves(env, company.id, product.id)
             svl_in_vals_list = []
+            svl_in_vals_mto_list = []
             svl_out_vals_list = []
             svl_man_vals_list = []
             svl_usage_vals_list = []
@@ -239,7 +243,7 @@ def generate_stock_valuation_layer(env):
                                 svl_man_vals_list.append(svl_vals)
                             previous_price = price_history_rec["cost"]
                         h_index += 1
-                # Add in svl
+                # Add in svl for not mto
                 if move["move_type"] == "in" or is_dropship:
                     total_qty = previous_qty + move["product_qty"]
                     # TODO: is needed vaccum if total_qty is negative?
@@ -251,10 +255,60 @@ def generate_stock_valuation_layer(env):
                             precision_digits=precision_price)
                     svl_vals = _prepare_in_svl_vals(
                         move, move["product_qty"], move["price_unit"], product, is_dropship)
-                    svl_in_vals_list.append(svl_vals)
+                    # Use separate list for the MTO case
+                    if not move["move_dest_id"]:
+                        svl_in_vals_list.append(svl_vals)
+                    else:
+                        svl_in_vals_mto_list.append(svl_vals)
                     previous_qty = total_qty
-                # Add out svl
-                if move["move_type"] == "out" or is_dropship:
+                # Add out svl with candidates
+                svl_in_index_mto = 0  # This will be for the MTO
+                if (move["move_type"] == "out" or is_dropship) and move["move_orig_id"]:
+                    svl_in_vals_mto_filtered_list = [
+                        item if item["move_dest_id"] == move["move_orig_id"] else None for item in svl_in_vals_mto_list
+                    ]
+                    qty = move["product_qty"]
+                    if product.cost_method in ("average", "fifo") and not is_dropship:
+                        # Reduce remaining qty in svl of type "in"
+                        while qty > 0 and svl_in_index_mto < len(svl_in_vals_mto_filtered_list):
+                            if svl_in_vals_mto_filtered_list[svl_in_index_mto]["remaining_qty"] >= qty:
+                                candidate_cost = (svl_in_vals_mto_filtered_list[svl_in_index_mto]["remaining_value"] /
+                                                  svl_in_vals_mto_filtered_list[svl_in_index_mto]["remaining_qty"])
+                                if usage:
+                                    # Prepare layer usage
+                                    svl_usage_vals = _prepare_svl_usage_vals(
+                                        svl_in_vals_mto_filtered_list[svl_in_index_mto]["id"], move, qty,
+                                        candidate_cost*qty)
+                                    svl_usage_vals_list.append(svl_usage_vals)
+                                svl_in_vals_mto_filtered_list[svl_in_index_mto]["remaining_qty"] -= qty
+                                svl_in_vals_mto_filtered_list[svl_in_index_mto]["remaining_value"] = float_round(
+                                    candidate_cost * svl_in_vals_mto_filtered_list[svl_in_index_mto]["remaining_qty"],
+                                    precision_digits=precision_price)
+                                qty = 0
+                            elif svl_in_vals_mto_filtered_list[svl_in_index_mto]["remaining_qty"]:
+                                if usage:
+                                    # Prepare layer usage
+                                    svl_usage_vals = _prepare_svl_usage_vals(
+                                        svl_in_vals_mto_filtered_list[svl_in_index_mto]["id"],
+                                        move, svl_in_vals_mto_filtered_list[svl_in_index_mto]["remaining_qty"],
+                                        svl_in_vals_mto_filtered_list[svl_in_index_mto]["remaining_value"])
+                                    svl_in_vals_mto_filtered_list.append(svl_usage_vals)
+                                qty -= svl_in_vals_mto_filtered_list[svl_in_index_mto]["remaining_qty"]
+                                svl_in_vals_mto_filtered_list[svl_in_index_mto]["remaining_qty"] = 0.0
+                                svl_in_vals_mto_filtered_list[svl_in_index_mto]["remaining_value"] = 0.0
+                                svl_in_index_mto += 1
+                            else:
+                                svl_in_index_mto += 1
+                    if product.cost_method == 'fifo':
+                        svl_vals = _prepare_out_svl_vals(
+                            move, move["product_qty"], abs(move["price_unit"]), product)
+                    else:
+                        svl_vals = _prepare_out_svl_vals(
+                            move, move["product_qty"], previous_price, product)
+                    svl_out_vals_list.append(svl_vals)
+                    previous_qty -= move["product_qty"]
+                # Add out svl with no candidates
+                if (move["move_type"] == "out" or is_dropship) and not move["move_orig_id"]:
                     qty = move["product_qty"]
                     if product.cost_method in ("average", "fifo") and not is_dropship:
                         # Reduce remaining qty in svl of type "in"
@@ -285,8 +339,6 @@ def generate_stock_valuation_layer(env):
                                 svl_in_vals_list[svl_in_index]["remaining_value"] = 0.0
                                 svl_in_index += 1
                             else:
-                                svl_in_vals_list[svl_in_index]["remaining_qty"] = 0.0
-                                svl_in_vals_list[svl_in_index]["remaining_value"] = 0.0
                                 svl_in_index += 1
                     if product.cost_method == 'fifo':
                         svl_vals = _prepare_out_svl_vals(
