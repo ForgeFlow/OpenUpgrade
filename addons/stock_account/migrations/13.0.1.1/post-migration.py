@@ -373,42 +373,11 @@ def generate_stock_valuation_layer(env):
         query_insert(env.cr, "stock_valuation_layer_usage", all_svl_usage_list)
 
 
-def fill_svl_usage_dropshipments(env):
-    """After generate_stock_valuation_layer dropship layers are not linked"""
-    svl_usage_vals_list = []
-    openupgrade.logged_query(
-        env.cr, """
-        SELECT count(*) as layer_no, sm.id as id, sm.company_id, sm.product_id,
-            sm.date, sm.create_uid, sm.create_date, sm.write_uid, sm.write_date
-        FROM stock_move sm
-        LEFT JOIN stock_location sl ON sl.id = sm.location_id
-        LEFT JOIN stock_location sld ON sld.id = sm.location_dest_id
-        INNER JOIN stock_valuation_layer svl ON svl.stock_move_id = sm.id
-        WHERE (sl.usage = 'supplier' AND sld.usage = 'customer')
-            OR (sl.usage = 'customer' AND sld.usage = 'supplier')
-        GROUP BY sm.id
-        HAVING count(*) = 2
-        """,
-    )
-    for move in env.cr.dictfetchall():
-        move_rec = env["stock.move"].browse(move["id"])
-        incoming = move_rec.stock_valuation_layer_ids.filtered(lambda svl: svl.quantity > 0.0)
-        outgoing = move_rec.stock_valuation_layer_ids.filtered(lambda svl: svl.quantity < 0.0)
-        if incoming and outgoing and incoming.quantity == -outgoing.quantity and not incoming.usage_ids:
-            svl_usage_vals = _prepare_svl_usage_vals(incoming.id, move, incoming.quantity, incoming.value)
-            svl_usage_vals_list.append(svl_usage_vals)
-    if svl_usage_vals_list:
-        svl_usage_vals_list = sorted(svl_usage_vals_list, key=lambda k: (k["create_date"]))
-        _logger.info("To create {} svl usage dropship records".format(len(svl_usage_vals_list)))
-        query_insert(env.cr, "stock_valuation_layer_usage", svl_usage_vals_list)
-
-
 @openupgrade.migrate()
 def migrate(env, version):
     if not openupgrade.table_exists(env.cr, 'stock_valuation_layer_usage'):
         create_table_stock_valuation_layer_usage(env)
     generate_stock_valuation_layer(env)
-    fill_svl_usage_dropshipments(env)
     openupgrade.delete_records_safely_by_xml_id(
         env, [
             "stock_account.default_cost_method",
