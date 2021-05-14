@@ -243,7 +243,6 @@ def migration_invoice_moves(env):
             AND ail.aml_matched IS NOT True
             AND aml.tax_line_id IS NULL
             AND aml.account_id <> ai.account_id
-            AND ail.quantity = aml.quantity
             AND ((ail.product_id IS NULL AND aml.product_id IS NULL) OR ail.product_id = aml.product_id)
             AND ((ail.uom_id IS NULL AND aml.product_uom_id IS NULL) OR ail.uom_id = aml.product_uom_id)
             AND aml.old_invoice_line_id IS NULL
@@ -255,6 +254,7 @@ def migration_invoice_moves(env):
             env.cr,
             query.format(
                 where=(sql.SQL(minimal_where + """
+                AND ail.quantity = aml.quantity
                 AND ail.account_id = aml.account_id
                 AND ai.commercial_partner_id = aml.partner_id
                 AND ((ail.account_analytic_id IS NULL AND aml.analytic_account_id IS NULL)
@@ -266,7 +266,19 @@ def migration_invoice_moves(env):
             env.cr,
             query.format(
                 where=(sql.SQL(minimal_where + """
+                AND ail.quantity = aml.quantity
                 AND ail.account_id = aml.account_id
+                AND ((ail.account_analytic_id IS NULL AND aml.analytic_account_id IS NULL)
+                    OR ail.account_analytic_id = aml.analytic_account_id)"""))
+            ),
+        )
+        # Same strict criteria, but without quantity matching
+        openupgrade.logged_query(
+            env.cr,
+            query.format(
+                where=(sql.SQL(minimal_where + """
+                AND ail.account_id = aml.account_id
+                AND ai.commercial_partner_id = aml.partner_id
                 AND ((ail.account_analytic_id IS NULL AND aml.analytic_account_id IS NULL)
                     OR ail.account_analytic_id = aml.analytic_account_id)"""))
             ),
@@ -274,7 +286,9 @@ def migration_invoice_moves(env):
         # Try now with a more relaxed criteria, as it's possible that users change some data on amls
         openupgrade.logged_query(
             env.cr,
-            query.format(where=sql.SQL(minimal_where + " AND rc.anglo_saxon_accounting IS DISTINCT FROM TRUE"))
+            query.format(where=sql.SQL(
+                minimal_where + " AND ail.quantity = aml.quantity"
+                                " AND rc.anglo_saxon_accounting IS DISTINCT FROM TRUE"))
         )
         # Remove duplicates
         openupgrade.logged_query(
