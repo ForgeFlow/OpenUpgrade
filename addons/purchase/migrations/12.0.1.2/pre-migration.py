@@ -61,12 +61,12 @@ def fill_purchase_order_user_id(cr):
             """
             ALTER TABLE purchase_order ADD COLUMN user_id integer;
             """)
-    openupgrade.logged_query(
-        cr, """
-        UPDATE purchase_order
-        SET user_id = create_uid
-        WHERE user_id IS NULL""",
-    )
+    # openupgrade.logged_query(
+    #     cr, """
+    #     UPDATE purchase_order
+    #     SET user_id = create_uid
+    #     WHERE user_id IS NULL""",
+    # )
 
 
 @openupgrade.migrate()
