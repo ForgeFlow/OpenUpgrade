@@ -61,7 +61,7 @@ class MrpBom(models.Model):
     company_id = fields.Many2one(
         'res.company', 'Company',
         default=lambda self: self.env['res.company']._company_default_get('mrp.bom'),
-        required=True)
+        required=False)
 
     @api.onchange('product_id')
     def onchange_product_id(self):
