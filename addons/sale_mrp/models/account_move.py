@@ -12,7 +12,7 @@ class AccountMoveLine(models.Model):
         so_line = self.sale_line_ids and self.sale_line_ids[-1] or False
         if so_line:
             bom = so_line.product_id.product_tmpl_id.bom_ids and so_line.product_id.product_tmpl_id.bom_ids[0]
-            if bom.type == 'phantom':
+            if bom.type == 'phantom' and (not bom.company_id or bom.company_id == so_line.company_id):
                 qty_to_invoice = self.product_uom_id._compute_quantity(self.quantity, self.product_id.uom_id)
                 qty_invoiced = sum([x.product_uom_id._compute_quantity(x.quantity, x.product_id.uom_id) for x in so_line.invoice_lines if x.move_id.state == 'posted'])
                 moves = so_line.move_ids
