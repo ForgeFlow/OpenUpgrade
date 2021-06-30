@@ -14,6 +14,18 @@ def rename_fields(env):
                 "payment_ref",
             ),
             (
+                "account.bank.statement.line",
+                "account_bank_statement_line",
+                "currency_id",
+                "foreign_currency_id",
+            ),
+            (
+                "account.bank.statement.line",
+                "account_bank_statement_line",
+                "journal_currency_id",
+                "currency_id",
+            ),
+            (
                 "account.cash.rounding",
                 "account_cash_rounding",
                 "account_id",
@@ -77,19 +89,6 @@ def rename_fields(env):
     )
 
 
-def copy_currency_id_and_journal_currency_id_fields(env):
-    openupgrade.rename_columns(
-        env.cr,
-        {
-            "account_bank_statement_line": [
-                ("currency_id", None),
-                ("journal_currency_id", None),
-                ("id", None),
-            ]
-        },
-    )
-
-
 def m2m_tables_account_journal_renamed(env):
     openupgrade.rename_tables(
         env.cr,
@@ -100,33 +99,143 @@ def m2m_tables_account_journal_renamed(env):
     )
 
 
-def copy_default_accounts_fields(env):
-    openupgrade.rename_columns(
+def remove_constrains_reconcile_models(env):
+    openupgrade.remove_tables_fks(
         env.cr,
-        {
-            "account.journal": [
-                ("default_credit_account_id", None),
-                ("default_debit_account_id", None),
-            ]
-        },
+        [
+            "account_reconcile_model_analytic_tag_rel",
+            "account_reconcile_model_account_tax_rel",
+            "account_reconcile_model_template_account_tax_template_rel",
+            "account_reconcile_model_tmpl_account_tax_bis_rel",
+        ],
     )
-
-
-def add_move_id_field_account_bank_statement_line(env):
     openupgrade.logged_query(
         env.cr,
         """
-        ALTER TABLE account_bank_statement_line
-        ADD move_id int
+        ALTER TABLE account_reconcile_model_analytic_tag_rel
+        ALTER COLUMN account_reconcile_model_id DROP NOT NULL
         """,
     )
     openupgrade.logged_query(
         env.cr,
         """
-        UPDATE account_bank_statement_line
+        ALTER TABLE account_reconcile_model_analytic_tag_rel
+        ADD COLUMN account_reconcile_model_line_id integer
+        """,
+    )
+
+
+def copy_fields(env):
+    openupgrade.rename_columns(
+        env.cr,
+        {
+            "account_journal": [
+                ("default_credit_account_id", None),
+                ("default_debit_account_id", None),
+            ],
+        },
+    )
+    if openupgrade.column_exists(env.cr, "account_move", "move_type"):
+        # see account_tax_balance of OCA
+        openupgrade.rename_columns(
+            env.cr,
+            {
+                "account_move": [
+                    ("move_type", None),
+                ],
+            },
+        )
+
+
+def add_move_id_field_account_bank_statement_line(env):
+    if not openupgrade.column_exists(
+        env.cr, "account_bank_statement_line", "currency_id"
+    ):
+        openupgrade.logged_query(
+            env.cr,
+            """
+            ALTER TABLE account_bank_statement_line
+            ADD COLUMN currency_id integer
+            """,
+        )
+    openupgrade.logged_query(
+        env.cr,
+        """
+        UPDATE account_bank_statement_line absl
+        SET currency_id = COALESCE(aj.currency_id, rc.currency_id)
+        FROM account_bank_statement bs
+        JOIN account_journal aj ON bs.journal_id = aj.id
+        JOIN res_company rc ON aj.company_id = rc.id
+        WHERE absl.statement_id = bs.id
+        """,
+    )
+    openupgrade.logged_query(
+        env.cr,
+        """
+        ALTER TABLE account_bank_statement_line
+        ADD COLUMN move_id integer
+        """,
+    )
+    if not openupgrade.column_exists(env.cr, "account_move", "statement_line_id"):
+        # In v10 existed that field
+        openupgrade.logged_query(
+            env.cr,
+            """
+            ALTER TABLE account_move
+            ADD COLUMN statement_line_id integer
+            """,
+        )
+    openupgrade.logged_query(
+        env.cr,
+        """
+        UPDATE account_move am
+        SET statement_line_id = aml.statement_line_id
+        FROM account_move_line aml
+        WHERE aml.move_id = am.id AND aml.statement_line_id IS NOT NULL
+        """,
+    )
+    openupgrade.logged_query(
+        env.cr,
+        """
+        UPDATE account_bank_statement_line absl
         SET move_id = am.id
         FROM account_move am
-        WHERE move_name = am.name
+        WHERE absl.move_name = am.name OR am.statement_line_id = absl.id
+        """,
+    )
+    openupgrade.logged_query(
+        env.cr,
+        """
+        UPDATE account_bank_statement_line absl
+        SET move_id = ap.move_id
+        FROM account_payment ap
+        WHERE absl.move_id IS NULL AND absl.payment_ref = ap.communication
+        """,
+    )
+    # TODO: if still exist some account_bank_statement_line with null move_id
+    # openupgrade.logged_query(
+    #     env.cr,
+    #     """
+    # WITH new_moves AS (
+    #     INSERT INTO account_move (statement_line_id, ...
+    #         create_uid, create_date, write_uid, write_date)
+    #     SELECT id, ...
+    #         create_uid, create_date, write_uid, write_date
+    #     FROM account_bank_statement_line absl
+    #     WHERE absl.move_id IS NULL
+    #     RETURNING id, statement_line_id)
+    # UPDATE account_bank_statement_line absl
+    # SET move_id = am.id
+    # FROM new_moves am
+    # WHERE absl.id = am.statement_line_id""",
+    # )
+    openupgrade.logged_query(
+        env.cr,
+        """
+        UPDATE account_move am
+        SET statement_line_id = absl.id
+        FROM account_bank_statement_line absl
+        WHERE am.id = absl.move_id AND am.statement_line_id IS NULL
         """,
     )
 
@@ -135,34 +244,81 @@ def add_move_id_field_account_payment(env):
     openupgrade.logged_query(
         env.cr,
         """
-        ALTER TABLE account_payment
-        ADD move_id int
+        UPDATE account_payment ap
+        SET currency_id = COALESCE(aj.currency_id, rc.currency_id)
+        FROM account_journal aj
+        JOIN res_company rc ON aj.company_id = rc.id
+        WHERE ap.journal_id = aj.id
         """,
     )
     openupgrade.logged_query(
         env.cr,
         """
-        UPDATE account_payment
-        SET move_id = am.id
-        FROM account_move am
-        WHERE move_name = am.name OR (
-            payment_reference = am.name AND move_name IS NULL)
+        ALTER TABLE account_payment
+        ADD COLUMN move_id integer
         """,
     )
     openupgrade.logged_query(
         env.cr,
         """
         ALTER TABLE account_move
-        ADD payment_id int
+        ADD COLUMN payment_id integer
         """,
     )
     openupgrade.logged_query(
         env.cr,
         """
-        UPDATE account_move
+        UPDATE account_move am
+        SET payment_id = aml.payment_id
+        FROM account_move_line aml
+        WHERE aml.move_id = am.id AND aml.payment_id IS NOT NULL
+        """,
+    )
+    openupgrade.logged_query(
+        env.cr,
+        """
+        UPDATE account_payment ap
+        SET move_id = am.id
+        FROM account_move am
+        WHERE ap.move_name = am.name OR (
+            ap.payment_reference = am.name AND ap.move_name IS NULL)
+            OR am.payment_id = ap.id""",
+    )
+    openupgrade.logged_query(
+        env.cr,
+        """
+        UPDATE account_payment ap
+        SET move_id = am.id
+        FROM account_move am
+        WHERE ap.move_id IS NULL AND (
+            am.payment_reference = ap.communication OR am.ref = ap.communication
+            OR am.name = ap.communication)
+        """,
+    )
+    # TODO: if still exist some account_payment with null move_id
+    # openupgrade.logged_query(
+    #     env.cr,
+    #     """
+    # WITH new_moves AS (
+    #     INSERT INTO account_move (payment_id, ...
+    #         create_uid, create_date, write_uid, write_date)
+    #     SELECT id, ...
+    #         create_uid, create_date, write_uid, write_date
+    #     FROM account_payment ap
+    #     WHERE ap.move_id IS NULL
+    #     RETURNING id, payment_id)
+    # UPDATE account_payment ap
+    # SET move_id = am.id
+    # FROM new_moves am
+    # WHERE ao.id = am.payment_id""",
+    # )
+    openupgrade.logged_query(
+        env.cr,
+        """
+        UPDATE account_move am
         SET payment_id = ap.id
         FROM account_payment ap
-        WHERE account_move.id = ap.move_id
+        WHERE am.id = ap.move_id
         """,
     )
 
@@ -178,15 +334,34 @@ def fill_empty_partner_type_account_payment(env):
     )
 
 
-def renamed_noupdate_xmlids(env):
-    openupgrade.rename_xmlids(
+def fill_account_move_line_currency_id(env):
+    openupgrade.logged_query(
         env.cr,
-        [
-            (
-                "account_analytic_default.analytic_default_comp_rule",
-                "account.analytic_default_comp_rule",
-            )
-        ],
+        """
+        ALTER TABLE account_move_line
+        DROP CONSTRAINT IF EXISTS account_move_line_check_amount_currency_balance_sign
+        """,
+    )
+    openupgrade.logged_query(
+        env.cr,
+        """
+        UPDATE account_move_line
+        SET currency_id = company_currency_id
+        WHERE currency_id IS NULL
+        """,
+    )
+
+
+def fill_account_payment_partner_id(env):
+    openupgrade.logged_query(
+        env.cr,
+        """
+        UPDATE account_payment ap
+        SET partner_id = rc.partner_id
+        FROM account_journal aj
+        JOIN res_company rc ON aj.company_id = rc.id
+        WHERE ap.payment_type = 'transfer'
+        """,
     )
 
 
@@ -195,11 +370,12 @@ def migrate(env, version):
     openupgrade.set_xml_ids_noupdate_value(
         env, "account", ["account_analytic_line_rule_billing_user"], True
     )
-    renamed_noupdate_xmlids(env)
+    copy_fields(env)
     rename_fields(env)
-    copy_currency_id_and_journal_currency_id_fields(env)
     m2m_tables_account_journal_renamed(env)
-    copy_default_accounts_fields(env)
-    add_move_id_field_account_bank_statement_line(env)
+    remove_constrains_reconcile_models(env)
     add_move_id_field_account_payment(env)
+    add_move_id_field_account_bank_statement_line(env)
     fill_empty_partner_type_account_payment(env)
+    fill_account_move_line_currency_id(env)
+    fill_account_payment_partner_id(env)
