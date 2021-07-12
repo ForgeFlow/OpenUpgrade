@@ -46,7 +46,7 @@ obsolete model sale.coupon.rule [module sale_coupon]
 obsolete model stock.change.standard.price [module stock_account]
 obsolete model stock.overprocessed.transfer [module stock]
 obsolete model stock.picking.responsible [module stock]
-obsolete model survey.label [module survey]
+obsolete model survey.label (renamed to survey.question.answer) [module survey]
 obsolete model survey.user_input_line (renamed to survey.user_input.line) [module survey]
 obsolete model test_performance.mail [module test_mail]
 new model account.automatic.entry.wizard [module account]
@@ -192,7 +192,7 @@ new model stock.backorder.confirmation.line [module stock]
 new model stock.immediate.transfer.line [module stock]
 new model stock.orderpoint.snooze [module stock]
 new model stock.valuation.layer.revaluation [module stock_account]
-new model survey.question.answer [module survey]
+new model survey.question.answer (renamed from survey.label) [module survey]
 new model survey.user_input.line (renamed from survey.user_input_line) [module survey]
 new model tab.a [module test_action_bindings]
 new model tab.b [module test_action_bindings]
@@ -351,13 +351,13 @@ new model website.robots [module website]
 new model website.sale.extra.field [module website_sale]
 new model website.snippet.filter [module website]
 ---Fields in module 'general'---
-# 9739 fields matched,
-# Direct match: 9622
+# 9747 fields matched,
+# Direct match: 9630
 # Found in other module: 117
 # Found with different type: 0
-# In obsolete models: 290
-# New columns: 3344
-# Not matched: 645
+# In obsolete models: 281
+# New columns: 3336
+# Not matched: 637
 ---XML records in module 'general'---
 ERROR: module not in list of installed modules:
 ---Models in module 'account_bank_statement_import'---

@@ -53,6 +53,7 @@ renamed_models = {
     "event.answer": "event.question.answer",
     "product.style": "product.ribbon",
     "survey.user_input_line": "survey.user_input.line",
+    "survey.label": "survey.question.answer",
     # OCA/server-tools
     "openupgrade.analysis.wizard": "upgrade.analysis",
     "openupgrade.attribute": "upgrade.attribute",
