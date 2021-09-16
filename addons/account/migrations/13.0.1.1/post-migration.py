@@ -288,6 +288,19 @@ def migration_invoice_moves(env):
         )
         if not env.cr.fetchone():
             break  # exit condition not having more duplicates
+    # Checking the missing lines to import
+    openupgrade.logged_query(
+        env.cr, """
+        UPDATE account_invoice_line ail
+        SET aml_matched = FALSE"""
+    )
+    openupgrade.logged_query(
+        env.cr, """
+        UPDATE account_invoice_line ail
+        SET aml_matched = TRUE
+        FROM account_move_line aml
+        WHERE aml.old_invoice_line_id = ail.id"""
+    )
     # 2st: exclude from invoice_tab the grouped ones, and create a new separated ones
     openupgrade.logged_query(
         env.cr, """
