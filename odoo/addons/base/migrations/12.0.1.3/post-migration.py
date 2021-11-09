@@ -1,6 +1,6 @@
 # © 2018 Opener B.V. (stefan@opener.amsterdam)
 # License AGPL-3.0 or later (http://www.gnu.org/licenses/agpl.html).
-from openupgradelib import openupgrade
+from openupgradelib import openupgrade, openupgrade_merge_records
 
 
 def generate_thumbnails(env):
@@ -32,6 +32,31 @@ def update_res_company_onboarding_company_state(env):
     good_companies.write({'base_onboarding_company_state': 'done'})
 
 
+def merge_duplicated_partner_banks(env):
+    openupgrade.logged_query(
+        env.cr, """
+        SELECT id, key
+        FROM (
+            SELECT id, count(*) over (
+               PARTITION BY company_id, sanitized_acc_number
+               ORDER BY company_id, sanitized_acc_number) AS num,
+               dense_rank() over (
+               ORDER BY company_id, sanitized_acc_number) AS key
+            FROM res_partner_bank
+        ) t
+        WHERE num > 1
+        ORDER BY key, id"""
+    )
+    partner_banks = {}
+    for partner_bank_id, key in env.cr.fetchall():
+        partner_banks.setdefault(key, []).append(partner_bank_id)
+    for key in partner_banks:
+        openupgrade_merge_records.merge_records(
+            env, 'res.partner.bank', partner_banks[key][1:],
+            partner_banks[key][0], field_spec={'sequence': 'max', 'currency_id': 'max'}, method='sql',
+            delete=True, exclude_columns=None, model_table='res_partner_bank')
+
+
 @openupgrade.migrate(use_env=True)
 def migrate(env, version):
     env['ir.ui.menu']._parent_store_compute()
@@ -46,3 +71,4 @@ def migrate(env, version):
         UPDATE ir_model_data SET noupdate=True
         WHERE  module='base' AND name='group_user'""",
     )
+    merge_duplicated_partner_banks(env)
