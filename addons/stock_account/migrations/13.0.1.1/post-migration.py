@@ -226,7 +226,10 @@ def generate_stock_valuation_layer(env):
     if all_svl_list:
         all_svl_list = sorted(all_svl_list, key=lambda k: (k["create_date"]))
         _logger.info("To create {} svl records".format(len(all_svl_list)))
-        query_insert(env.cr, "stock_valuation_layer", all_svl_list)
+        j = int(len(all_svl_list) / 10)
+        for i in range(10):
+            partial = all_svl_list[(i * j):((i+1) * j)]
+            query_insert(env.cr, "stock_valuation_layer", partial)
 
 
 @openupgrade.migrate()
