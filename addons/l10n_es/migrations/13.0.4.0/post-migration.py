@@ -84,8 +84,10 @@ def use_new_taxes_and_repartition_lines_on_move_lines(env):
     domain = [('model', '=', 'account.tax'), ('res_id', 'in', taxes_with_children.ids), ('module', '!=', '__export__')]
     parent_taxes = env['account.tax'].browse(env['ir.model.data'].search(domain).mapped('res_id')).filtered(
         lambda t: t.amount_type != 'group')
-    children_tax_ids = taxes_with_children.mapped('children_tax_ids').ids
-    if children_tax_ids:
+    for tax_with_children in parent_taxes:
+        children_tax_ids = tax_with_children.mapped('children_tax_ids').ids
+        if not children_tax_ids:
+            continue
         # assure children taxes are not parent taxes
         openupgrade.logged_query(
             env.cr, """
@@ -101,8 +103,16 @@ def use_new_taxes_and_repartition_lines_on_move_lines(env):
             FROM account_tax at
             JOIN account_tax_filiation_rel fil ON fil.child_tax = at.id
             JOIN account_tax at2 ON fil.parent_tax = at2.id
+            JOIN account_move_line_account_tax_rel rel
+                ON rel.account_tax_id = at.id
+            JOIN account_move_line aml2 ON rel.account_move_line_id = aml2.id
+            JOIN account_move_line_account_tax_rel rel2
+                ON (aml2.id = rel2.account_move_line_id AND
+                    at.id != rel2.account_tax_id)
+            JOIN account_tax at3 ON (at3.id = rel2.account_tax_id)
             WHERE aml.tax_line_id = at.id AND at.id IN %s AND at2.id IN %s
-            """, (tuple(children_tax_ids), tuple(parent_taxes.ids)),
+                AND aml.move_id = aml2.move_id AND (at3.id = at2.id OR at3.name like 'PR%%')
+            """, (tuple(children_tax_ids), tuple(tax_with_children.ids)),
         )
         # update account move line tax_ids
         openupgrade.logged_query(
@@ -116,8 +126,12 @@ def use_new_taxes_and_repartition_lines_on_move_lines(env):
             JOIN account_tax at ON rel.account_tax_id = at.id
             JOIN account_tax_filiation_rel fil ON fil.child_tax = at.id
             JOIN account_tax at2 ON fil.parent_tax = at2.id
-            WHERE at.id IN %s AND at2.id IN %s
-            ON CONFLICT DO NOTHING""", (tuple(children_tax_ids), tuple(parent_taxes.ids)),
+            JOIN account_move_line_account_tax_rel rel2
+                ON (aml.id = rel2.account_move_line_id AND
+                    at.id != rel2.account_tax_id)
+            JOIN account_tax at3 ON (at3.id = rel2.account_tax_id)
+            WHERE at.id IN %s AND at2.id IN %s AND (at3.id = at2.id OR at3.name like 'PR%%')
+            ON CONFLICT DO NOTHING""", (tuple(children_tax_ids), tuple(tax_with_children.ids)),
         )
         other_parents = env["account.tax"].with_context(active_test=False).search(
             [("children_tax_ids", "in", children_tax_ids)]).filtered(
@@ -148,8 +162,21 @@ def use_new_taxes_and_repartition_lines_on_move_lines(env):
                     AND SIGN(at.amount) = SIGN(atrl2.factor_percent))
                 WHERE aml.tax_repartition_line_id = atrl.id AND at.id IN %s AND at2.id IN %s
                 """).format(column=sql.Identifier(tax_column)),
-                (tuple(children_tax_ids), tuple(parent_taxes.ids)),
+                (tuple(children_tax_ids), tuple(tax_with_children.ids)),
             )
+        # delete obsoletes
+        openupgrade.logged_query(
+            env.cr, """
+            DELETE FROM account_move_line_account_tax_rel rel
+            USING account_tax at
+            JOIN account_tax_filiation_rel fil ON fil.child_tax = at.id
+            JOIN account_tax at2 ON fil.parent_tax = at2.id
+            JOIN account_move_line_account_tax_rel rel2
+                ON rel2.account_tax_id = at2.id
+            WHERE at.id IN %s AND at2.id IN %s AND rel.account_tax_id = at.id
+                AND rel.account_move_line_id = rel2.account_move_line_id
+            """, (tuple(children_tax_ids), tuple(tax_with_children.ids)),
+        )
 
 
 def update_account_tags(env):
