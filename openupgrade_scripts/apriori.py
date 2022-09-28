@@ -18,6 +18,10 @@ renamed_modules = {
 # Merged modules contain a mapping from old module names to other,
 # preexisting module names
 merged_modules = {
+    "account_online_sync": "account_online_synchronization",
+    "account_plaid": "account_online_synchronization",
+    "account_ponto": "account_online_synchronization",
+    "account_yodlee": "account_online_synchronization",
     # odoo
     "account_edi_extended": "account_edi",
     "l10n_be_invoice_bba": "l10n_be",
@@ -54,6 +58,8 @@ renamed_models = {
 
 # only used here for upgrade_analysis
 merged_models = {
+    "account.online.provider": "account.online.link",
+    "account.online.journal": "account.online.account",
     "stock.inventory": "stock.quant",
     "stock.inventory.line": "stock.quant",
 }
