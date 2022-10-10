@@ -244,7 +244,8 @@ class Warehouse(models.Model):
             else:
                 values.update(rule_details['create_values'])
                 values.update({'warehouse_id': self.id})
-                self[rule_field] = self.env['stock.rule'].create(values)
+                if values.get("picking_type_id", False):
+                    self[rule_field] = self.env['stock.rule'].create(values)
         return True
 
     def _find_global_route(self, xml_id, route_name):
