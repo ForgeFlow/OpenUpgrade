@@ -4,7 +4,7 @@ from openupgradelib import openupgrade
 
 _field_renames = [
     ("product.template", "product_template", "life_time", "expiration_time"),
-    ("stock.production.lot", "stock_production_lot", "life_date", "expiration_date"),
+    # ("stock.production.lot", "stock_production_lot", "life_date", "expiration_date"),
 ]
 
 
