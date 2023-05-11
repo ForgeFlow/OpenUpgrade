@@ -211,7 +211,8 @@ def fill_manufacture_mto_pull(env):
         values = rule_details.get('update_values', {})
         values.update(rule_details['create_values'])
         values.update({'warehouse_id': wh.id})
-        wh['manufacture_mto_pull_id'] = env['stock.rule'].create(values)
+        if values.get("picking_type_id", False):
+            wh['manufacture_mto_pull_id'] = env['stock.rule'].create(values)
 
 
 def fill_mrp_workorder_product_uom_id(cr):
