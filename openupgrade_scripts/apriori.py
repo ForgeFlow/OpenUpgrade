@@ -107,6 +107,8 @@ merged_modules = {
     # OCA/website
     "website_google_analytics_4": "website",
     "website_snippet_timeline": "website",
+    # custom addons
+    "project_stock": "project_stock_link",
 }
 
 # only used here for upgrade_analysis

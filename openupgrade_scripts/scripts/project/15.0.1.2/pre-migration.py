@@ -59,6 +59,14 @@ def adapt_project_task_dependency(env):
         env.cr, {"task_dependencies_rel": [("dependency_task_id", "depends_on_id")]}
     )
 
+def save_stage_id(env):
+    if not openupgrade.column_exists(env.cr, "account_analytic_account", "old_stage_id"):
+        env.cr.execute(
+            "alter table account_analytic_account add column old_stage_id int;"
+        )
+        env.cr.execute(
+            "update account_analytic_account set old_stage_id = stage_id;"
+        )
 
 def rename_project_milestone_target_date(env):
     """If project_milestone is installed then rename column target_date
@@ -78,3 +86,4 @@ def migrate(env, version):
     fill_project_project_allow_task_dependencies(env)
     fill_project_project_last_update_status(env)
     rename_project_milestone_target_date(env)
+    save_stage_id(env)

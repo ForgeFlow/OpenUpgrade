@@ -69,6 +69,32 @@ def _fill_project_task_display_project_id(env):
         """,
     )
 
+def _fill_project_project_stage(env):
+    # use data from analytic_account_stage
+    env.cr.execute("""
+        alter table account_analytic_account drop constraint if exists account_analytic_account_stage_id_fkey;
+        """)
+    env.cr.execute("""
+        UPDATE project_project_stage SET active = false;
+        INSERT INTO project_project_stage
+        (create_date, write_date, sequence, name, fold, create_uid, write_uid, active)
+        SELECT create_date, write_date, sequence, name, fold, create_uid, write_uid, true
+        FROM analytic_account_stage;
+        """)
+    env.cr.execute("""
+        WITH BQ AS(
+            SELECT pps.id as pps_id, aas.id as aas_id from project_project_stage pps
+            INNER JOIN analytic_account_stage aas on aas.name = pps.name
+            WHERE pps.name = aas.name
+            )
+        UPDATE account_analytic_account aaa
+        SET stage_id = (
+        SELECT BQ.pps_id
+        FROM account_analytic_account aaa2
+        JOIN BQ ON BQ.aas_id = aaa2.stage_id
+        AND aaa.id = aaa2.id);
+        """)
+
 
 @openupgrade.migrate()
 def migrate(env, version):
@@ -86,3 +112,4 @@ def migrate(env, version):
             "rating_project_request_email_template",
         ],
     )
+    _fill_project_project_stage(env)
