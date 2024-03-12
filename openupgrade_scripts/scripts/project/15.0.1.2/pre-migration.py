@@ -78,6 +78,13 @@ def rename_project_milestone_target_date(env):
             {"project_milestone": [("target_date", "deadline")]},
         )
 
+_model_renames = [
+    ("analytic.account.stage", "project.project.stage"),
+]
+
+_table_renamed = [
+    ("analytic_account_stage", "project_project_stage"),
+]
 
 @openupgrade.migrate()
 def migrate(env, version):
@@ -87,3 +94,5 @@ def migrate(env, version):
     fill_project_project_last_update_status(env)
     rename_project_milestone_target_date(env)
     save_stage_id(env)
+    openupgrade.rename_models(env.cr, _model_renames)
+    openupgrade.rename_tables(env.cr, _table_renamed)
