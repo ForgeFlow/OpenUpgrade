@@ -75,7 +75,7 @@ def fill_hr_leave(env):
             first_approver_id, holiday_status_id, holiday_type, manager_id,
             meeting_id, name, notes, number_of_days, payslip_status,
             report_note, second_approver_id, state, user_id, create_uid,
-            create_date, write_uid, write_date, public_holiday_id
+            create_date, write_uid, write_date, old_public_holiday_id
         FROM hr_holidays
         WHERE %s = 'remove'
         RETURNING id""", (AsIs(openupgrade.get_legacy_name('type')), ),
