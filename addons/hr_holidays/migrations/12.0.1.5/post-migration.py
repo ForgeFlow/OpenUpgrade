@@ -61,6 +61,13 @@ def _move_model_in_data(env, ids, old_model, new_model):
 
 
 def fill_hr_leave(env):
+    # add column that will be needed for module hr_public_holidays_leave in v15
+    if not openupgrade.column_exists(env.cr, 'hr_leave', 'public_holiday_id'):
+        openupgrade.logged_query(
+            env.cr, """
+                ALTER TABLE hr_leave ADD COLUMN public_holiday_id INT;
+            """
+        )
     # In pre-migration the hr_leave table still doesn't exist
     openupgrade.logged_query(
         env.cr, """
