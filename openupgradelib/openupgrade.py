@@ -2473,9 +2473,9 @@ def convert_field_to_html(
     if translate:
         if version_info[0] < 16:
             do_raise("Translatable fields are only managed in version 16.0 or higher")
-        cr.execute("SELECT id, {field_name} FROM {table};").format(
+        cr.execute("SELECT id, {field_name} FROM {table};".format(
             field_name=field_name, table=table
-        )  # pylint: disable=E8103
+        ))  # pylint: disable=E8103
         for row in cr.fetchall():
             record_id, translations = row
             for lang in translations:
