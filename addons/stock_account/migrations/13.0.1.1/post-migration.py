@@ -137,10 +137,22 @@ def get_stock_moves(env, company_id, product_id, real_time):
             sm.create_uid, sm.create_date, sm.write_uid, sm.write_date,
             CASE WHEN (sl.usage <> 'internal' AND (sl.usage <> 'transit' OR sl.company_id <> sm.company_id))
                    AND (sld.usage = 'internal' OR (sld.usage = 'transit' AND sld.company_id = sm.company_id))
+                   AND sl.analytic_account_id IS NULL AND sld.analytic_account_id IS NULL
                    THEN 'in'
                  WHEN (sl.usage = 'internal' OR (sl.usage = 'transit' AND sl.company_id = sm.company_id))
                    AND (sld.usage <> 'internal' AND (sld.usage <> 'transit' OR sld.company_id <> sm.company_id))
+                   AND sl.analytic_account_id IS NULL AND sld.analytic_account_id IS NULL
                    THEN 'out'
+                WHEN sl.analytic_account_id IS NOT NULL
+                        AND sld.analytic_account_id IS NULL
+                        AND sl.usage = 'internal'
+                        AND sld.usage = 'internal'
+                   THEN 'in'
+                 WHEN sld.analytic_account_id IS NOT NULL
+                        AND sl.analytic_account_id IS NULL
+                        AND sl.usage = 'internal'
+                        AND sld.usage = 'internal'
+                    THEN 'out'
                  WHEN sl.usage = 'supplier' AND sld.usage = 'customer' THEN 'dropship'
                  WHEN sl.usage = 'customer' AND sld.usage = 'supplier' THEN 'dropship_return'
                  ELSE 'other'
@@ -150,6 +162,13 @@ def get_stock_moves(env, company_id, product_id, real_time):
             {account_move_join}
         WHERE sm.company_id = %s AND sm.product_id = %s
             AND state = 'done'
+            AND (
+                (sm.analytic_account_id IS NULL)
+                OR
+                (sl.analytic_account_id IS NOT NULL AND sld.analytic_account_id IS NULL AND sl.usage = 'internal' AND sld.usage = 'internal')
+                OR
+                (sld.analytic_account_id IS NOT NULL AND sl.analytic_account_id IS NULL AND sl.usage = 'internal' AND sld.usage = 'internal')
+            )
         ORDER BY sm.date, sm.id
     """
     account_move_table = ""
