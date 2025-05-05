@@ -134,23 +134,6 @@ def adapt_account_move_sending_data(env):
             '{author_user_id}', sending_data::jsonb->'sp_user_id')
         WHERE sending_data IS NOT NULL AND sending_data::jsonb ? 'sp_user_id'""",
     )
-    # mail_template_id -> mail_template:
-    env.cr.execute(
-        """
-        SELECT id, sending_data::jsonb->'mail_template_id' as mail_template_id
-        FROM account_move
-        WHERE sending_data IS NOT NULL AND sending_data::jsonb ? 'mail_template_id'""",
-    )
-    for move_id, mail_template_id in env.cr.fetchall():
-        mail_template = env.ref(mail_template_id)
-        openupgrade.logged_query(
-            env.cr,
-            f"""
-            UPDATE account_move
-            SET sending_data = jsonb_set(sending_data::jsonb - 'mail_template_id',
-                '{{mail_template}}', {mail_template})
-            WHERE id = {move_id}""",
-        )
     # send_mail: True -> 'sending_methods': {"email"}:
     openupgrade.logged_query(
         env.cr,

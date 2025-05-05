@@ -78,7 +78,7 @@ account      / account.lock_exception   / lock_date (date)              : NEW
 account      / account.lock_exception   / lock_date_field (selection)   : NEW required, selection_keys: ['fiscalyear_lock_date', 'purchase_lock_date', 'sale_lock_date', 'tax_lock_date']
 account      / account.lock_exception   / reason (char)                 : NEW
 account      / account.lock_exception   / user_id (many2one)            : NEW relation: res.users, hasdefault: default
-# NOTHING TO DO? (new model)
+# NOTHING TO DO: new feature
 
 account      / account.move             / amount_untaxed_in_currency_signed (float): NEW isfunction: function, stored
 # DONE: pre-migration: pre-created and filled
@@ -101,7 +101,7 @@ account      / account.move             / journal_group_id (many2one)   : NEW re
 # NOTHING TO DO: store = False
 
 account      / account.move             / made_sequence_gap (boolean)   : NEW isfunction: function, stored
-# NOTHING TO DO?
+# NOTHING TO DO: will be computed by ORM
 
 account      / account.move             / origin_payment_id (many2one)  : NEW relation: account.payment
 account      / account.move             / payment_id (many2one)         : DEL relation: account.payment
