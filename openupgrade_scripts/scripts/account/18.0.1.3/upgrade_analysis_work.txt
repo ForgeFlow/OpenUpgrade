@@ -20,8 +20,7 @@ account      / account.account          / code_mapping_ids (one2many)   : NEW re
 account      / account.account          / code (char)                   : not stored anymore
 account      / account.account          / code (char)                   : now a function
 account      / account.account          / code_store (char)             : NEW
-# DONE: pre-migration: renamed field
-# DONE: post-migration: used openupgrade_180.convert_company_dependent
+# DONE: post-migration: fill code_store from code and company_id
 
 account      / account.account          / company_currency_id (many2one): not related anymore
 account      / account.account          / company_currency_id (many2one): now a function

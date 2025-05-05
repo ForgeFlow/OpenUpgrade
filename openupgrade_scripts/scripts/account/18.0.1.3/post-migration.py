@@ -27,7 +27,6 @@ def link_payments_to_moves(env):
 
 
 def convert_company_dependent(env):
-    openupgrade_180.convert_company_dependent(env, "account.account", "code_store")
     openupgrade_180.convert_company_dependent(
         env, "account.cash.rounding", "loss_account_id"
     )
@@ -125,10 +124,23 @@ def fill_res_partner_property_x_payment_method_line_id(env):
         )
 
 
+def account_account_code_fields(env):
+    """
+    Fill account.account#code_store from company_id and code
+    """
+    env.cr.execute(
+        """
+        UPDATE account_account
+        SET code_store=json_build_object(company_id, code)
+        """
+    )
+
+
 @openupgrade.migrate()
 def migrate(env, version):
     replace_period_lock_date(env)
     link_payments_to_moves(env)
+    account_account_code_fields(env)
     openupgrade.m2o_to_x2m(
         env.cr, env["account.account"], "account_account", "company_ids", "company_id"
     )

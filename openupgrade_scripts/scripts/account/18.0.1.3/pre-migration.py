@@ -4,7 +4,6 @@
 from openupgradelib import openupgrade
 
 field_renames = [
-    ("account.account", "account_account", "code", "code_store"),
     ("account.move", "account_move", "payment_id", "origin_payment_id"),
     ("account.move", "account_move", "reversal_move_id", "reversal_move_ids"),
     ("account.move", "account_move", "send_and_print_values", "sending_data"),
