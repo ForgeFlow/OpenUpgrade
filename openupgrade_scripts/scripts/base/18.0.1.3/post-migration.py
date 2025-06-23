@@ -11,10 +11,10 @@ def migrate(env, version):
     openupgrade.delete_records_safely_by_xml_id(
         env, ["base.module_sale_ebay", "base.module_website_twitter_wall"]
     )
-    enterprise_old = env.ref("base.module_account_accountant")
-    env["ir.model.data"].search(
-        [("module", "=", "base"), ("name", "=", "module_account_accountant")]
-    ).unlink()
-    enterprise_new = env.ref("base.module_accountant")
-    if enterprise_old.state in ("to install", "to upgrade"):
-        enterprise_new.state = "to install"
+    # enterprise_old = env.ref("base.module_account_accountant")
+    # env["ir.model.data"].search(
+    #     [("module", "=", "base"), ("name", "=", "module_account_accountant")]
+    # ).unlink()
+    # enterprise_new = env.ref("base.module_accountant")
+    # if enterprise_old.state in ("to install", "to upgrade"):
+    #     enterprise_new.state = "to install"
