@@ -132,6 +132,12 @@ def migrate(env, version=None):
     openupgrade.rename_fields(env, _field_renames)
     openupgrade.rename_xmlids(env.cr, _xmlid_renames)
     openupgrade.add_columns(env, _new_columns)
+    openupgrade.drop_columns(
+        env.cr,
+        [
+            ("product_template", "responsible_id")
+        ],
+    )
     fill_product_template_is_storable(env)
     fill_stock_move_location_dest_id(env)
     fill_stock_putaway_rule_sublocation(env)

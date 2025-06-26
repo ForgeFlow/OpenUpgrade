@@ -177,6 +177,12 @@ def migrate(env, version):
         openupgrade.rename_fields(env, field_renames_l10n_dk_bookkeeping)
     openupgrade.rename_fields(env, field_renames)
     openupgrade.add_columns(env, _new_columns)
+    openupgrade.drop_columns(
+        env.cr,
+        [
+            ("account_cash_rounding", "profit_account_id")
+        ],
+    )
     update_account_move_amount_untaxed_in_currency_signed(env)
     update_account_move_checked(env)
     fill_account_move_preferred_payment_method_line_id(env)
