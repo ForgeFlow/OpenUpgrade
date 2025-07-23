@@ -28,3 +28,11 @@ def _fill_project_reinvoiced_sale_order_id(env):
 @openupgrade.migrate()
 def migrate(env, version):
     _fill_project_reinvoiced_sale_order_id(env)
+    openupgrade.rename_columns(
+        env.cr,
+        {"product_template": [("project_id", None)]},
+    )
+    openupgrade.rename_columns(
+        env.cr,
+        {"product_template": [("project_template_id", None)]},
+    )
