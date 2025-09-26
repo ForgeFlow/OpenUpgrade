@@ -293,7 +293,7 @@ def generate_stock_valuation_layer(env):
         # [1] https://github.com/postgres/postgres/blob/master/src/include/utils/memutils.h#L40
         # [2] A gentle calculation
         svl_length = len(all_svl_list)
-        batch_size = 5_000_000
+        batch_size = 10_000
         _logger.info(f"To create {svl_length} svl records")
         for offset in range(0, svl_length, batch_size):
             query_insert(
